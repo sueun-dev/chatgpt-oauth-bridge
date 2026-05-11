@@ -1,0 +1,11 @@
+artifacts/*
+reports/*.json
+__pycache__/
+*.py[cod]
+.venv/
+data/
+.env
+.env.*
+.DS_Store
+!artifacts/.keep
+!reports/.keep
