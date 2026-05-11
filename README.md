@@ -42,7 +42,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Connect OAuth
+## Connect OAuth In One Check
+
+Run the setup checker first:
+
+```bash
+python setup_oauth.py
+```
+
+If dependencies are missing, it prints the exact `venv` and `pip install` commands. If OAuth is missing, it prints the exact login commands. If OAuth is ready, it prints the selected token source, visible model count, chosen text/image models, and a tiny text smoke result.
+
+## Connect OAuth Manually
 
 Use either Codex CLI or Hermes. Codex CLI is the cleanest path because this repo can read the live Codex OAuth session from `~/.codex/auth.json`.
 
@@ -77,6 +87,7 @@ The wrapper checks both sources and chooses a usable OAuth token. Tokens stay lo
 ## Quick Check
 
 ```bash
+python setup_oauth.py
 PYTHONPATH=src python src/openai_oauth_access.py
 ```
 
@@ -201,6 +212,7 @@ Docs may mention those words as labels, but actual secret values should never ap
 
 ```text
 src/codex_oauth.py                 OAuth source selection and Codex headers
+setup_oauth.py                     One-command OAuth setup checker
 src/openai_oauth_access.py          Main OAuth-only wrapper
 src/oauth_feature_router.py         OpenAI-like compatibility layer
 src/oauth_openai_compat_server.py   Local /v1 compatibility server

@@ -12,6 +12,12 @@ PY=python
 
 토큰은 출력하지 않는다. Hermes 토큰이 만료되어 있으면 `src/codex_oauth.py`가 현재 Codex CLI OAuth 토큰으로 fallback한다.
 
+연결 상태부터 보고 싶으면:
+
+```bash
+python setup_oauth.py
+```
+
 ## 1. Text / Responses 대체
 
 무엇인가: 공식 `/v1/responses`가 Codex OAuth로 직접 열리는 것은 아니지만, 같은 "텍스트 응답 생성" 기능은 Codex OAuth `responses` surface로 처리한다.

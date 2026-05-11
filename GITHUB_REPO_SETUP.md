@@ -72,6 +72,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
+python setup_oauth.py
 PYTHONPATH=src python src/openai_oauth_access.py
 ```
 
