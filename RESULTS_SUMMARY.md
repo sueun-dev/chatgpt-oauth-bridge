@@ -43,8 +43,8 @@ Deep status counts:
 Codex/ChatGPT OAuth backend:
 
 - Model discovery through `https://chatgpt.com/backend-api/codex`
-- Text response with `gpt-5.4-mini`
-- Vision input with `gpt-5.4-mini`
+- Text response with `gpt-5.5`
+- Vision input with `gpt-5.5`
 - Image generation through the Codex Responses `image_generation` tool
 - Drawing generation through the same image tool
 - Remote compaction through `POST /backend-api/codex/responses/compact`

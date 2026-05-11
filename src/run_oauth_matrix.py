@@ -39,6 +39,13 @@ REPORTS = ROOT / "reports"
 ARTIFACTS = ROOT / "artifacts"
 
 
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def sanitize_response_text(text: str, limit: int = 400) -> str:
     """Keep reports useful without storing bearer/API/ephemeral secrets."""
     redacted = re.sub(r"ek_[A-Za-z0-9_-]+", "ek_<redacted>", text)
@@ -129,7 +136,7 @@ class Matrix:
 
     def test_text_response(self) -> Dict[str, Any]:
         text, output_types = self._stream_text_response(
-            model=self.text_model or "gpt-5.4-mini",
+            model=self.text_model or "gpt-5.5",
             instructions="Follow the user's instruction exactly.",
             input_payload=[{
                 "type": "message",
@@ -208,7 +215,7 @@ class Matrix:
         data = base64.b64decode(b64)
         path = ARTIFACTS / filename
         path.write_bytes(data)
-        info = {"path": str(path), "bytes": len(data)}
+        info = {"path": display_path(path), "bytes": len(data)}
         try:
             with Image.open(path) as img:
                 info.update({"width": img.width, "height": img.height, "format": img.format})
@@ -224,7 +231,7 @@ class Matrix:
         final_output_text = ""
         collected_output_items: list[Any] = []
         with client.responses.stream(
-            model=self.image_host_model or self.text_model or "gpt-5.4",
+            model=self.image_host_model or self.text_model or "gpt-5.5",
             store=False,
             instructions=(
                 "Use the image_generation tool to fulfill this request. "
@@ -310,7 +317,7 @@ class Matrix:
         b64 = base64.b64encode(red_png.read_bytes()).decode("ascii")
         data_url = f"data:image/png;base64,{b64}"
         text, output_types = self._stream_text_response(
-            model=self.text_model or "gpt-5.4-mini",
+            model=self.text_model or "gpt-5.5",
             instructions="Answer image questions briefly and literally.",
             input_payload=[{
                 "type": "message",
@@ -323,7 +330,7 @@ class Matrix:
         )
         text = text.strip()
         return {
-            "probe_image": str(red_png),
+            "probe_image": display_path(red_png),
             "model": self.text_model,
             "output_text": text[:200],
             "output_types": output_types,
@@ -422,7 +429,7 @@ class Matrix:
 
     def test_official_chat_completions(self) -> Dict[str, Any]:
         return self._official_api_post("/v1/chat/completions", json_body={
-            "model": self.text_model or "gpt-5.4-mini",
+            "model": self.text_model or "gpt-5.5",
             "messages": [{"role": "user", "content": "Reply with: oauth chat ok"}],
         })
 
@@ -435,13 +442,13 @@ class Matrix:
 
     def test_official_responses_blocked(self) -> Dict[str, Any]:
         return self._official_api_post("/v1/responses", json_body={
-            "model": "gpt-5.4-mini",
+            "model": "gpt-5.5",
             "input": "OAuth-only official API probe",
         })
 
     def test_official_responses_web_search(self) -> Dict[str, Any]:
         return self._official_api_post("/v1/responses", json_body={
-            "model": "gpt-5.4-mini",
+            "model": "gpt-5.5",
             "input": "OAuth-only web search tool probe",
             "tools": [{"type": "web_search_preview"}],
         })
@@ -567,9 +574,9 @@ class Matrix:
             transcript_path.write_text("".join(transcript_parts))
         return {
             "websocket_url": "wss://api.openai.com/v1/realtime?model=gpt-realtime",
-            "audio_path": str(audio_path) if audio else None,
+            "audio_path": display_path(audio_path) if audio else None,
             "audio_bytes": len(audio),
-            "transcript_path": str(transcript_path) if transcript_parts else None,
+            "transcript_path": display_path(transcript_path) if transcript_parts else None,
             "transcript": "".join(transcript_parts)[:200],
             "event_types": event_types[:40],
             "_status": "pass" if len(audio) > 100 else "fail",
@@ -850,7 +857,7 @@ class Matrix:
             path = ARTIFACTS / "codex_oauth_tts.mp3"
             path.write_bytes(data)
             return {
-                "path": str(path),
+                "path": display_path(path),
                 "bytes": len(data),
                 "_status": "pass" if len(data) > 1000 else "fail",
             }

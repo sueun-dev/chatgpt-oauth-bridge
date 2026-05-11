@@ -16,6 +16,7 @@ CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 CODEX_MODELS_URL = f"{CODEX_BASE_URL}/models?client_version=1.0.0"
 CODEX_OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 CODEX_OAUTH_TOKEN_URL = "https://auth.openai.com/oauth/token"
+DEFAULT_CODEX_MODEL = "gpt-5.5"
 
 
 class OAuthProbeError(RuntimeError):
@@ -242,16 +243,8 @@ def fetch_codex_models(access_token: str) -> list[str]:
 
 
 def choose_text_model(model_ids: list[str]) -> str:
-    for candidate in ("gpt-5.4-mini", "gpt-5.2", "gpt-5.4", "gpt-5.5", "gpt-5.3-codex-spark"):
-        if candidate in model_ids:
-            return candidate
-    if model_ids:
-        return model_ids[0]
-    return "gpt-5.4-mini"
+    return DEFAULT_CODEX_MODEL
 
 
 def choose_image_host_model(model_ids: list[str]) -> str:
-    for candidate in ("gpt-5.4", "gpt-5.5", "gpt-5.4-mini", "gpt-5.2"):
-        if candidate in model_ids:
-            return candidate
-    return choose_text_model(model_ids)
+    return DEFAULT_CODEX_MODEL
