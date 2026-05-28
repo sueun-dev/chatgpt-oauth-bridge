@@ -37,6 +37,8 @@ from codex_oauth import (
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
 ARTIFACTS = ROOT / "artifacts"
+CODEX_REASONING = {"effort": "xhigh"}
+IMAGE_GENERATION_QUALITY = "high"
 
 
 def display_path(path: Path) -> str:
@@ -181,6 +183,7 @@ class Matrix:
         with client.responses.stream(
             model=model,
             store=False,
+            reasoning=CODEX_REASONING,
             instructions=instructions,
             input=input_payload,
         ) as stream:
@@ -233,6 +236,7 @@ class Matrix:
         with client.responses.stream(
             model=self.image_host_model or self.text_model or "gpt-5.5",
             store=False,
+            reasoning=CODEX_REASONING,
             instructions=(
                 "Use the image_generation tool to fulfill this request. "
                 "Return the generated image."
@@ -246,7 +250,7 @@ class Matrix:
                 "type": "image_generation",
                 "model": "gpt-image-2",
                 "size": "1024x1024",
-                "quality": "low",
+                "quality": IMAGE_GENERATION_QUALITY,
             }],
             tool_choice={"type": "image_generation"},
         ) as stream:

@@ -54,11 +54,12 @@ class OAuthFeatureRouter:
             "message": {"role": "assistant", "content": text},
         }
 
-    def images_generate(self, prompt: str, output_path: Path | str) -> Dict[str, Any]:
-        path = self.oauth.codex_generate_image(prompt, output_path)
+    def images_generate(self, prompt: str, output_path: Path | str, *, size: str = "1024x1024") -> Dict[str, Any]:
+        path = self.oauth.codex_generate_image(prompt, output_path, size=size)
         return {
             "object": "oauth_compat.image",
             "route": "codex_image_generation",
+            "size": size,
             "path": str(path),
         }
 

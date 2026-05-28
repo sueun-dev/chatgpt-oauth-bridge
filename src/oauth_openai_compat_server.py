@@ -106,9 +106,12 @@ class CompatHandler(BaseHTTPRequestHandler):
         prompt = body.get("prompt")
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("prompt must be a non-empty string")
+        size = body.get("size", "1024x1024")
+        if size not in {"1024x1024", "1536x1024", "1024x1536", "auto"}:
+            raise ValueError("size must be one of 1024x1024, 1536x1024, 1024x1536, auto")
         ARTIFACTS.mkdir(exist_ok=True)
         output_path = ARTIFACTS / f"compat_proxy_image_{uuid.uuid4().hex}.png"
-        result = self.router.images_generate(prompt, output_path)
+        result = self.router.images_generate(prompt, output_path, size=size)
         image_bytes = Path(result["path"]).read_bytes()
         item: Dict[str, Any]
         if body.get("response_format") == "url":
@@ -119,6 +122,7 @@ class CompatHandler(BaseHTTPRequestHandler):
             "created": int(time.time()),
             "data": [item],
             "oauth_compat_route": result.get("route"),
+            "size": result.get("size"),
             "local_path": result.get("path"),
         })
 

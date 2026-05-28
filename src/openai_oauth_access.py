@@ -26,6 +26,8 @@ from run_oauth_matrix import sanitize_response_text
 
 
 CHATGPT_BACKEND_BASE = "https://chatgpt.com/backend-api"
+CODEX_REASONING = {"effort": "xhigh"}
+IMAGE_GENERATION_QUALITY = "high"
 
 
 class OpenAIOAuthAccess:
@@ -43,10 +45,10 @@ class OpenAIOAuthAccess:
         return codex_openai_client(self.access_token)
 
     def _response_text_and_types(self, response: Any) -> tuple[str, list[str]]:
-        output_text = getattr(response, "output_text", "") or ""
+        output_text = self._item_get(response, "output_text", "") or ""
         output_types: list[str] = []
         chunks: list[str] = []
-        for item in getattr(response, "output", []) or []:
+        for item in self._item_get(response, "output", []) or []:
             item_type = self._item_get(item, "type")
             if item_type:
                 output_types.append(str(item_type))
@@ -94,75 +96,103 @@ class OpenAIOAuthAccess:
         return text
 
     def _stream_codex_response(self, *, model: str, instructions: str, input_payload: list[dict[str, Any]]) -> tuple[str, list[str]]:
-        final = None
-        output_items: list[Any] = []
         text_deltas: list[str] = []
-        with self._codex_client().responses.stream(
-            model=model,
-            store=False,
-            instructions=instructions,
-            input=input_payload,
-        ) as stream:
-            for event in stream:
-                event_type = getattr(event, "type", "")
-                if event_type == "response.output_item.done":
-                    item = getattr(event, "item", None)
-                    if item is not None:
-                        output_items.append(item)
-                elif "output_text.delta" in event_type:
-                    delta = getattr(event, "delta", "")
-                    if delta:
-                        text_deltas.append(delta)
-            final = stream.get_final_response()
-        if final is not None and not getattr(final, "output", None) and output_items:
-            final.output = list(output_items)
-        text, output_types = self._response_text_and_types(final)
-        if not text and text_deltas:
-            text = "".join(text_deltas).strip()
-            output_types = output_types or ["message"]
-        if final is not None and not getattr(final, "output", None) and text:
-            final.output = [SimpleNamespace(
-                type="message",
-                role="assistant",
-                status="completed",
-                content=[SimpleNamespace(type="output_text", text=text)],
-            )]
-        return self._response_text_and_types(final)
+        output_types: list[str] = []
+        final_text = ""
+        payload = {
+            "model": model,
+            "store": False,
+            "stream": True,
+            "reasoning": CODEX_REASONING,
+            "instructions": instructions,
+            "input": input_payload,
+        }
+        for event in self._iter_codex_sse_events(payload):
+            event_type = str(event.get("type") or "")
+            if event_type == "response.output_text.delta":
+                delta = event.get("delta")
+                if isinstance(delta, str):
+                    text_deltas.append(delta)
+            elif event_type == "response.output_text.done":
+                text = event.get("text")
+                if isinstance(text, str):
+                    final_text = text
+            elif event_type == "response.output_item.done":
+                item = event.get("item")
+                item_type = item.get("type") if isinstance(item, dict) else None
+                if isinstance(item_type, str):
+                    output_types.append(item_type)
+            elif event_type in {"response.done", "response.completed"}:
+                response = event.get("response")
+                if isinstance(response, dict):
+                    parsed_text, parsed_types = self._response_text_and_types(response)
+                    if parsed_text:
+                        final_text = parsed_text
+                    output_types.extend(parsed_types)
+        text = final_text or "".join(text_deltas).strip()
+        return text, output_types or (["message"] if text else [])
 
-    def codex_generate_image(self, prompt: str, output_path: Path | str) -> Path:
+    def codex_generate_image(self, prompt: str, output_path: Path | str, *, size: str = "1024x1024") -> Path:
         path = Path(output_path)
         image_b64 = None
-        with self._codex_client().responses.stream(
-            model=self.image_host_model,
-            store=False,
-            instructions="Use the image_generation tool to fulfill this request. Return the generated image.",
-            input=[{
+        if size not in {"1024x1024", "1536x1024", "1024x1536", "auto"}:
+            raise ValueError("size must be one of 1024x1024, 1536x1024, 1024x1536, auto")
+        payload = {
+            "model": self.image_host_model,
+            "store": False,
+            "stream": True,
+            "reasoning": CODEX_REASONING,
+            "instructions": "Use the image_generation tool to fulfill this request. Return the generated image.",
+            "input": [{
                 "type": "message",
                 "role": "user",
                 "content": [{"type": "input_text", "text": prompt}],
             }],
-            tools=[{
+            "tools": [{
                 "type": "image_generation",
                 "model": "gpt-image-2",
-                "size": "1024x1024",
-                "quality": "low",
+                "size": size,
+                "quality": IMAGE_GENERATION_QUALITY,
             }],
-            tool_choice={"type": "image_generation"},
-        ) as stream:
-            for event in stream:
-                if getattr(event, "type", "") == "response.output_item.done":
-                    item = getattr(event, "item", None)
-                    if self._item_get(item, "type") == "image_generation_call":
-                        image_b64 = self._item_get(item, "result")
-            if not image_b64:
-                final = stream.get_final_response()
-                for item in getattr(final, "output", []) or []:
-                    if self._item_get(item, "type") == "image_generation_call":
-                        image_b64 = self._item_get(item, "result")
+            "tool_choice": {"type": "image_generation"},
+        }
+        for event in self._iter_codex_sse_events(payload):
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "image_generation_call":
+                result = item.get("result")
+                if isinstance(result, str) and result:
+                    image_b64 = result
+            response = event.get("response")
+            if isinstance(response, dict):
+                for output in response.get("output") or []:
+                    if isinstance(output, dict) and output.get("type") == "image_generation_call":
+                        result = output.get("result")
+                        if isinstance(result, str) and result:
+                            image_b64 = result
         if not image_b64:
             raise RuntimeError("No image_generation_call result was returned.")
         path.write_bytes(base64.b64decode(image_b64))
         return path
+
+    def _iter_codex_sse_events(self, payload: dict[str, Any]):
+        url = f"{CODEX_BASE_URL}/responses"
+        headers = codex_headers(self.access_token)
+        with httpx.Client(timeout=httpx.Timeout(600.0)) as client:
+            with client.stream("POST", url, headers=headers, json=payload) as response:
+                if response.status_code >= 400:
+                    raise RuntimeError(f"Codex response failed with HTTP {response.status_code}: {sanitize_response_text(response.read().decode('utf-8', errors='replace'))}")
+                for line in response.iter_lines():
+                    if not line or not line.startswith("data: "):
+                        continue
+                    raw = line.removeprefix("data: ").strip()
+                    if raw == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(event, dict):
+                        yield event
 
     def official_transcribe_audio(self, audio_path: Path | str, *, model: str = "gpt-4o-mini-transcribe") -> Dict[str, Any]:
         path = Path(audio_path)
@@ -578,6 +608,9 @@ def main() -> int:
         "codex_base_url": CODEX_BASE_URL,
         "text_model": oauth.text_model,
         "image_host_model": oauth.image_host_model,
+        "reasoning": CODEX_REASONING,
+        "image_generation_model": "gpt-image-2",
+        "image_generation_quality": IMAGE_GENERATION_QUALITY,
         "working_methods": [
             "codex_text",
             "codex_vision",
