@@ -1,7 +1,7 @@
 # Deep OAuth Research Report
 
-- Started: `2026-05-11T23:52:58Z`
-- Finished: `2026-05-11T23:53:25Z`
+- Started: `2026-05-29T21:56:06Z`
+- Finished: `2026-05-29T21:56:38Z`
 - Runtime source: `codex-cli`
 - Text model: `gpt-5.5`
 - openai/codex source HEAD checked this run: `4859d80ffeec76cc59c95fd274157c6b5560b4d2`
@@ -30,22 +30,22 @@
 | `auth_accepted_request_invalid` | `chatgpt_api_codex_config_requirements` | http_status=404; url=https://chatgpt.com/api/codex/config/requirements |
 | `auth_accepted_request_invalid` | `chatgpt_api_codex_apps_mcp_initialize` | http_status=302; url=https://chatgpt.com/api/codex/apps |
 | `auth_accepted_request_invalid` | `chatgpt_api_codex_responses_text` | http_status=302; url=https://chatgpt.com/api/codex/responses |
-| `pass` | `chatgpt_backend_file_upload` | http_status=200; url=https://chatgpt.com/backend-api/files; file_id_prefix=file_0000000; uri=sediment://file_00000000c6ac71fba7f66c31d3aefa92; upload_http_status=201; finalize_status=success; download_url_present=True; download_url_host=sdmntprwestcentralus.oaiusercontent.com; download_probe_http_status=200; download_probe_sha256_prefix=4580327da363bb74 |
+| `pass` | `chatgpt_backend_file_upload` | http_status=200; url=https://chatgpt.com/backend-api/files; file_id_prefix=file_0000000; uri=sediment://file_00000000a11871fda7eb43699f6a267f; upload_http_status=201; finalize_status=success; download_url_present=True; download_url_host=sdmntprwestus3.oaiusercontent.com; download_probe_http_status=200; download_probe_sha256_prefix=4580327da363bb74 |
 | `pass` | `chatgpt_backend_curated_plugins_export` | http_status=200; url=https://chatgpt.com/backend-api/plugins/export/curated; download_url_present=True; download_url_host=files.openai.com; download_probe_http_status=200 |
-| `auth_accepted_request_invalid` | `chatgpt_backend_ps_plugins_list_global` | http_status=404; url=https://chatgpt.com/backend-api/ps/plugins/list |
-| `auth_accepted_request_invalid` | `chatgpt_backend_ps_plugins_installed_global` | http_status=404; url=https://chatgpt.com/backend-api/ps/plugins/installed |
-| `auth_accepted_request_invalid` | `chatgpt_backend_ps_plugins_workspace_shared` | http_status=404; url=https://chatgpt.com/backend-api/ps/plugins/workspace/shared |
+| `pass` | `chatgpt_backend_ps_plugins_list_global` | http_status=200; url=https://chatgpt.com/backend-api/ps/plugins/list; plugins_count=0 |
+| `pass` | `chatgpt_backend_ps_plugins_installed_global` | http_status=200; url=https://chatgpt.com/backend-api/ps/plugins/installed; plugins_count=0 |
+| `pass` | `chatgpt_backend_ps_plugins_workspace_shared` | http_status=200; url=https://chatgpt.com/backend-api/ps/plugins/workspace/shared; plugins_count=0 |
 | `not_run_no_candidate` | `chatgpt_backend_ps_plugins_first_global_detail` | url=https://chatgpt.com/backend-api/ps/plugins/<plugin-id>; reason=no global plugin id returned by list |
 | `not_run_no_candidate` | `chatgpt_backend_ps_plugins_first_skill_detail` | url=https://chatgpt.com/backend-api/ps/plugins/<plugin-id>/skills/<skill-name>; reason=no global plugin id returned by list |
-| `pass` | `chatgpt_backend_plugins_list_legacy` | http_status=200; url=https://chatgpt.com/backend-api/plugins/list; items_count=121 |
-| `pass` | `chatgpt_backend_plugins_featured` | http_status=200; url=https://chatgpt.com/backend-api/plugins/featured; items_count=21 |
+| `pass` | `chatgpt_backend_plugins_list_legacy` | http_status=200; url=https://chatgpt.com/backend-api/plugins/list; items_count=127 |
+| `pass` | `chatgpt_backend_plugins_featured` | http_status=200; url=https://chatgpt.com/backend-api/plugins/featured; items_count=41 |
 | `pass` | `chatgpt_backend_plugins_featured_chat` | http_status=200; url=https://chatgpt.com/backend-api/plugins/featured; items_count=19 |
-| `pass` | `chatgpt_backend_connectors_directory_list` | http_status=200; url=https://chatgpt.com/backend-api/connectors/directory/list; apps_count=1004; pages_fetched=1 |
-| `pass` | `chatgpt_backend_connectors_directory_workspace` | http_status=200; url=https://chatgpt.com/backend-api/connectors/directory/list_workspace; apps_count=1004 |
+| `pass` | `chatgpt_backend_connectors_directory_list` | http_status=200; url=https://chatgpt.com/backend-api/connectors/directory/list; apps_count=1347; pages_fetched=1 |
+| `pass` | `chatgpt_backend_connectors_directory_workspace` | http_status=200; url=https://chatgpt.com/backend-api/connectors/directory/list_workspace; apps_count=1347 |
 | `pass` | `chatgpt_backend_environments_by_repo_openai_codex` | http_status=200; url=https://chatgpt.com/backend-api/wham/environments/by-repo/github/openai/codex; items_count=0 |
-| `auth_accepted_request_invalid` | `chatgpt_backend_workspace_plugin_shares_created` | http_status=404; url=https://chatgpt.com/backend-api/ps/plugins/workspace/created |
-| `auth_accepted_request_invalid` | `chatgpt_backend_ps_plugins_list_workspace` | http_status=404; url=https://chatgpt.com/backend-api/ps/plugins/list |
-| `auth_accepted_request_invalid` | `chatgpt_backend_ps_plugins_installed_workspace` | http_status=404; url=https://chatgpt.com/backend-api/ps/plugins/installed |
+| `pass` | `chatgpt_backend_workspace_plugin_shares_created` | http_status=200; url=https://chatgpt.com/backend-api/ps/plugins/workspace/created; plugins_count=0 |
+| `pass` | `chatgpt_backend_ps_plugins_list_workspace` | http_status=200; url=https://chatgpt.com/backend-api/ps/plugins/list; plugins_count=0 |
+| `pass` | `chatgpt_backend_ps_plugins_installed_workspace` | http_status=200; url=https://chatgpt.com/backend-api/ps/plugins/installed; plugins_count=0 |
 | `expected_blocked` | `chatgpt_backend_account_settings` | http_status=401; url=https://chatgpt.com/backend-api/accounts/<account-id>/settings |
 | `pass` | `codex_backend_compact` | http_status=200; url=https://chatgpt.com/backend-api/codex/responses/compact; output_count=2 |
 | `auth_accepted_request_invalid` | `codex_backend_memories_trace_summarize` | http_status=404; url=https://chatgpt.com/backend-api/codex/memories/trace_summarize |
@@ -53,7 +53,7 @@
 | `auth_accepted_request_invalid` | `codex_backend_realtime_call_json_shape` | http_status=404; url=https://chatgpt.com/backend-api/codex/realtime/calls |
 | `auth_accepted_request_invalid` | `openai_realtime_calls_application_sdp_shape` | http_status=400; url=https://api.openai.com/v1/realtime/calls |
 | `auth_accepted_request_invalid` | `openai_realtime_calls_multipart_shape` | http_status=400; url=https://api.openai.com/v1/realtime/calls |
-| `pass` | `openai_realtime_calls_multipart_valid_sdp` | http_status=201; url=https://api.openai.com/v1/realtime/calls; answer_sdp_present=True; answer_sdp_line_count=40; answer_sdp_sha256_prefix=7521c2f908a0a4f2; location_header_present=True; location_path_shape=/v1/realtime/calls/calls/<call-id> |
+| `pass` | `openai_realtime_calls_multipart_valid_sdp` | http_status=201; url=https://api.openai.com/v1/realtime/calls; answer_sdp_present=True; answer_sdp_line_count=40; answer_sdp_sha256_prefix=299a03dca3dd9f83; location_header_present=True; location_path_shape=/v1/realtime/calls/<call-id> |
 | `pass` | `chatgpt_apps_mcp_initialize_probe` | http_status=200; url=https://chatgpt.com/backend-api/wham/apps |
 | `pass` | `chatgpt_apps_mcp_tools_list` | http_status=200; url=https://chatgpt.com/backend-api/wham/apps; tools_count=111; initialize_http_status=200 |
 | `pass` | `chatgpt_apps_mcp_resources_list` | http_status=200; url=https://chatgpt.com/backend-api/wham/apps; resources_count=0 |

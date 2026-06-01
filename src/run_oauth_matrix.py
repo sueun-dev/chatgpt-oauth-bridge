@@ -13,7 +13,6 @@ import time
 import traceback
 import wave
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Callable, Dict, Optional
 
 import httpx
@@ -115,6 +114,7 @@ class Matrix:
 
         blocked = {
             "OPENAI_API_KEY": bool(os.environ.get("OPENAI_API_KEY")),
+            "OPENAI_ACCESS_TOKEN": bool(os.environ.get("OPENAI_ACCESS_TOKEN")),
             "OPENAI_ADMIN_KEY": bool(os.environ.get("OPENAI_ADMIN_KEY")),
         }
         return {
@@ -154,10 +154,10 @@ class Matrix:
         }
 
     def _response_text_and_types(self, response: Any) -> tuple[str, list[str]]:
-        output_text = getattr(response, "output_text", "") or ""
+        output_text = self._item_get(response, "output_text", "") or ""
         output_types: list[str] = []
         chunks: list[str] = []
-        for item in getattr(response, "output", []) or []:
+        for item in self._item_get(response, "output", []) or []:
             item_type = self._item_get(item, "type")
             if item_type:
                 output_types.append(str(item_type))
@@ -175,44 +175,66 @@ class Matrix:
             value = obj.get(key, default)
         return value if value is not None else default
 
+    def _iter_codex_sse_events(self, payload: dict[str, Any]):
+        url = f"{CODEX_BASE_URL}/responses"
+        headers = codex_headers(self.access_token)
+        with httpx.Client(timeout=httpx.Timeout(600.0)) as client:
+            with client.stream("POST", url, headers=headers, json=payload) as response:
+                if response.status_code >= 400:
+                    body = response.read().decode("utf-8", errors="replace")
+                    raise RuntimeError(
+                        f"Codex response failed with HTTP {response.status_code}: "
+                        f"{sanitize_response_text(body)}"
+                    )
+                for line in response.iter_lines():
+                    if not line or not line.startswith("data: "):
+                        continue
+                    raw = line.removeprefix("data: ").strip()
+                    if raw == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(event, dict):
+                        yield event
+
     def _stream_text_response(self, *, model: str, instructions: str, input_payload: list[dict[str, Any]]) -> tuple[str, list[str]]:
-        client = codex_openai_client(self.access_token)
-        final = None
-        collected_output_items: list[Any] = []
-        collected_text_deltas: list[str] = []
-        with client.responses.stream(
-            model=model,
-            store=False,
-            reasoning=CODEX_REASONING,
-            instructions=instructions,
-            input=input_payload,
-        ) as stream:
-            for event in stream:
-                event_type = getattr(event, "type", "")
-                if event_type == "response.output_item.done":
-                    item = getattr(event, "item", None)
-                    if item is not None:
-                        collected_output_items.append(item)
-                elif "output_text.delta" in event_type:
-                    delta = getattr(event, "delta", "")
-                    if delta:
-                        collected_text_deltas.append(delta)
-            final = stream.get_final_response()
-        if final is not None and not getattr(final, "output", None) and collected_output_items:
-            final.output = list(collected_output_items)
-        text, output_types = self._response_text_and_types(final)
-        if not text and collected_text_deltas:
-            text = "".join(collected_text_deltas).strip()
-            if not output_types:
-                output_types = ["message"]
-        if final is not None and not getattr(final, "output", None) and text:
-            final.output = [SimpleNamespace(
-                type="message",
-                role="assistant",
-                status="completed",
-                content=[SimpleNamespace(type="output_text", text=text)],
-            )]
-        return self._response_text_and_types(final)
+        text_deltas: list[str] = []
+        output_types: list[str] = []
+        final_text = ""
+        payload = {
+            "model": model,
+            "store": False,
+            "stream": True,
+            "reasoning": CODEX_REASONING,
+            "instructions": instructions,
+            "input": input_payload,
+        }
+        for event in self._iter_codex_sse_events(payload):
+            event_type = str(event.get("type") or "")
+            if event_type == "response.output_text.delta":
+                delta = event.get("delta")
+                if isinstance(delta, str):
+                    text_deltas.append(delta)
+            elif event_type == "response.output_text.done":
+                text = event.get("text")
+                if isinstance(text, str):
+                    final_text = text
+            elif event_type == "response.output_item.done":
+                item = event.get("item")
+                item_type = item.get("type") if isinstance(item, dict) else None
+                if isinstance(item_type, str):
+                    output_types.append(item_type)
+            elif event_type in {"response.done", "response.completed"}:
+                response = event.get("response")
+                if isinstance(response, dict):
+                    parsed_text, parsed_types = self._response_text_and_types(response)
+                    if parsed_text:
+                        final_text = parsed_text
+                    output_types.extend(parsed_types)
+        text = final_text or "".join(text_deltas).strip()
+        return text, output_types or (["message"] if text else [])
 
     def _save_png_b64(self, b64: str, filename: str) -> Dict[str, Any]:
         data = base64.b64decode(b64)
@@ -227,56 +249,49 @@ class Matrix:
         return info
 
     def _stream_image(self, *, prompt: str, filename: str) -> Dict[str, Any]:
-        client = codex_openai_client(self.access_token)
         image_b64 = None
         partial_count = 0
         final_output_types: list[str] = []
         final_output_text = ""
-        collected_output_items: list[Any] = []
-        with client.responses.stream(
-            model=self.image_host_model or self.text_model or "gpt-5.5",
-            store=False,
-            reasoning=CODEX_REASONING,
-            instructions=(
+        payload = {
+            "model": self.image_host_model or self.text_model or "gpt-5.5",
+            "store": False,
+            "stream": True,
+            "reasoning": CODEX_REASONING,
+            "instructions": (
                 "Use the image_generation tool to fulfill this request. "
                 "Return the generated image."
             ),
-            input=[{
+            "input": [{
                 "type": "message",
                 "role": "user",
                 "content": [{"type": "input_text", "text": prompt}],
             }],
-            tools=[{
+            "tools": [{
                 "type": "image_generation",
                 "model": "gpt-image-2",
                 "size": "1024x1024",
                 "quality": IMAGE_GENERATION_QUALITY,
             }],
-            tool_choice={"type": "image_generation"},
-        ) as stream:
-            for event in stream:
-                event_type = getattr(event, "type", "")
-                if event_type == "response.image_generation_call.partial_image":
-                    partial_count += 1
-                elif event_type == "response.output_item.done":
-                    item = getattr(event, "item", None)
-                    if item is not None:
-                        collected_output_items.append(item)
-                        if self._item_get(item, "type") == "image_generation_call":
-                            image_b64 = self._item_get(item, "result")
-                elif event_type == "response.completed":
-                    response = getattr(event, "response", None)
-                    for item in getattr(response, "output", []) or []:
-                        if self._item_get(item, "type") == "image_generation_call":
-                            image_b64 = self._item_get(item, "result")
-            if image_b64 is None:
-                final = stream.get_final_response()
-                if final is not None and not getattr(final, "output", None) and collected_output_items:
-                    final.output = list(collected_output_items)
-                final_output_text, final_output_types = self._response_text_and_types(final)
-                for item in getattr(final, "output", []) or []:
-                    if self._item_get(item, "type") == "image_generation_call":
-                        image_b64 = self._item_get(item, "result")
+            "tool_choice": {"type": "image_generation"},
+        }
+        for event in self._iter_codex_sse_events(payload):
+            event_type = str(event.get("type") or "")
+            if event_type == "response.image_generation_call.partial_image":
+                partial_count += 1
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "image_generation_call":
+                result = item.get("result")
+                if isinstance(result, str) and result:
+                    image_b64 = result
+            response = event.get("response")
+            if isinstance(response, dict):
+                final_output_text, final_output_types = self._response_text_and_types(response)
+                for output in response.get("output") or []:
+                    if isinstance(output, dict) and output.get("type") == "image_generation_call":
+                        result = output.get("result")
+                        if isinstance(result, str) and result:
+                            image_b64 = result
         if not image_b64:
             return {
                 "host_model": self.image_host_model,
@@ -369,6 +384,8 @@ class Matrix:
         if 200 <= response.status_code < 300:
             return "pass"
         text = response.text.lower()
+        if response.status_code == 404 and "invalid url" in text:
+            return "not_available"
         if (
             response.status_code in (401, 403)
             or "missing scopes" in text
@@ -455,6 +472,12 @@ class Matrix:
             "model": "gpt-5.5",
             "input": "OAuth-only web search tool probe",
             "tools": [{"type": "web_search_preview"}],
+        })
+
+    def test_official_responses_input_tokens(self) -> Dict[str, Any]:
+        return self._official_api_post("/v1/responses/input_tokens", json_body={
+            "model": "gpt-5.4",
+            "input": "OAuth input-token count probe",
         })
 
     def test_official_image_blocked(self) -> Dict[str, Any]:
@@ -603,6 +626,16 @@ class Matrix:
             },
         })
 
+    def test_official_realtime_sessions(self) -> Dict[str, Any]:
+        evidence = self._official_api_post("/v1/realtime/sessions", json_body={
+            "model": "gpt-realtime",
+            "modalities": ["audio", "text"],
+            "instructions": "OAuth Realtime session route probe.",
+        })
+        if evidence.get("_status") == "pass":
+            evidence["client_secret_present"] = "client_secret" in evidence.get("response_prefix", "")
+        return evidence
+
     def test_official_realtime_transcription_sessions_legacy_shape(self) -> Dict[str, Any]:
         return self._official_api_post("/v1/realtime/transcription_sessions", json_body={
             "input_audio_format": "pcm16",
@@ -610,6 +643,26 @@ class Matrix:
                 "model": "gpt-4o-mini-transcribe",
             },
         })
+
+    def test_official_realtime_translation_client_secret(self) -> Dict[str, Any]:
+        evidence = self._official_api_post("/v1/realtime/translations/client_secrets", json_body={
+            "expires_after": {"anchor": "created_at", "seconds": 600},
+            "session": {
+                "model": "gpt-realtime-translate",
+                "audio": {
+                    "input": {
+                        "transcription": {"model": "gpt-realtime-whisper"},
+                        "noise_reduction": None,
+                    },
+                    "output": {"language": "es"},
+                },
+            },
+        })
+        if evidence.get("_status") == "pass":
+            evidence["client_secret_present"] = True
+            evidence["translation_language"] = "es"
+            evidence["response_prefix"] = ""
+        return evidence
 
     def realistic_webrtc_offer_sdp(self) -> str:
         fingerprint = ":".join(["AA"] * 32)
@@ -674,6 +727,9 @@ class Matrix:
     def test_official_evals_list(self) -> Dict[str, Any]:
         return self._official_api_get("/v1/evals?limit=1")
 
+    def test_official_skills_list(self) -> Dict[str, Any]:
+        return self._official_api_get("/v1/skills?limit=1")
+
     def test_official_containers_list(self) -> Dict[str, Any]:
         return self._official_api_get("/v1/containers?limit=1")
 
@@ -726,6 +782,35 @@ class Matrix:
             headers_extra={"OpenAI-Beta": "assistants=v2"},
         )
 
+    def test_official_conversation_create_delete(self) -> Dict[str, Any]:
+        path = "/v1/conversations"
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+        }
+        with httpx.Client(timeout=httpx.Timeout(30.0)) as client:
+            response = client.post(f"https://api.openai.com{path}", headers=headers, json={})
+            status = self._status_from_official_response(response)
+            conversation_id = None
+            delete_status = None
+            if 200 <= response.status_code < 300:
+                payload = response.json()
+                conversation_id = payload.get("id")
+                if isinstance(conversation_id, str) and conversation_id:
+                    delete = client.delete(f"https://api.openai.com/v1/conversations/{conversation_id}", headers=headers)
+                    delete_status = delete.status_code
+                    if not (200 <= delete.status_code < 300):
+                        status = "fail"
+        return {
+            "url": "https://api.openai.com/v1/conversations",
+            "http_status": response.status_code,
+            "conversation_id_prefix": conversation_id[:12] if isinstance(conversation_id, str) else None,
+            "delete_http_status": delete_status,
+            "response_prefix": sanitize_response_text(response.text),
+            "auth": "Codex OAuth bearer token, redacted",
+            "_status": status,
+        }
+
     def test_official_thread_create_delete(self) -> Dict[str, Any]:
         path = "/v1/threads"
         headers = {
@@ -771,6 +856,20 @@ class Matrix:
         if not workflow_id and evidence.get("_status") == "auth_accepted_request_invalid":
             evidence["_status"] = "resource_required"
         return evidence
+
+    def test_official_chatkit_threads_list(self) -> Dict[str, Any]:
+        return self._official_api_get(
+            "/v1/chatkit/threads?limit=1",
+            headers_extra={"OpenAI-Beta": "chatkit_beta=v1"},
+        )
+
+    def test_official_audio_voice_consents_list(self) -> Dict[str, Any]:
+        return self._official_api_get("/v1/audio/voice_consents?limit=1")
+
+    def test_official_audio_voices_create_shape_probe(self) -> Dict[str, Any]:
+        return self._official_api_post("/v1/audio/voices", files={
+            "name": (None, "oauth-probe"),
+        })
 
     def test_official_realtime_calls_shape_probe(self) -> Dict[str, Any]:
         return self._official_api_post("/v1/realtime/calls", json_body={})
@@ -923,7 +1022,10 @@ class Matrix:
                 "location_path_shape",
                 "upload_id_prefix",
                 "thread_id_prefix",
+                "conversation_id_prefix",
                 "workflow_id_source",
+                "client_secret_present",
+                "translation_language",
                 "url",
             ):
                 value = result.evidence.get(key)
@@ -943,6 +1045,7 @@ class Matrix:
             "- `expected_blocked`: The endpoint rejected OAuth as expected or the Codex backend has no route for it.",
             "- `auth_accepted_request_invalid`: OAuth reached the route, then the probe payload or missing object shape was rejected before any expensive job was started.",
             "- `resource_required`: OAuth got far enough that a real workflow/resource ID is needed to continue.",
+            "- `not_available`: The route is documented or source-backed, but this deployment returned an invalid-url/not-routed response.",
             "- `fail`: The test should have worked under the current OAuth path but did not.",
             "",
             "No access tokens, refresh tokens, API keys, or Authorization headers are stored in this report.",
@@ -968,6 +1071,7 @@ class Matrix:
             self.run_case("official_api_completions_legacy_with_oauth", "official-api-oauth", self.test_official_completions_legacy)
             self.run_case("official_api_responses_with_oauth", "official-api-boundary", self.test_official_responses_blocked)
             self.run_case("official_api_responses_web_search_with_oauth", "official-api-boundary", self.test_official_responses_web_search)
+            self.run_case("official_api_responses_input_tokens_with_oauth", "official-api-boundary", self.test_official_responses_input_tokens)
             self.run_case("official_api_image_with_oauth", "official-api-boundary", self.test_official_image_blocked)
             self.run_case("official_api_image_edit_with_oauth", "official-api-boundary", self.test_official_image_edit_probe)
             self.run_case("official_api_image_variation_with_oauth", "official-api-boundary", self.test_official_image_variation_probe)
@@ -977,7 +1081,9 @@ class Matrix:
             self.run_case("official_api_realtime_with_oauth", "official-api-boundary", self.test_official_realtime_blocked)
             self.run_case("official_api_realtime_audio_websocket_with_oauth", "official-api-oauth", self.test_official_realtime_audio_websocket)
             self.run_case("official_api_realtime_transcription_with_oauth", "official-api-oauth", self.test_official_realtime_transcription_session)
+            self.run_case("official_api_realtime_sessions_with_oauth", "official-api-oauth", self.test_official_realtime_sessions)
             self.run_case("official_api_realtime_transcription_sessions_legacy_shape_with_oauth", "official-api-boundary", self.test_official_realtime_transcription_sessions_legacy_shape)
+            self.run_case("official_api_realtime_translation_client_secret_with_oauth", "official-api-oauth", self.test_official_realtime_translation_client_secret)
             self.run_case("official_api_realtime_calls_with_oauth", "official-api-oauth", self.test_official_realtime_calls_valid_sdp)
             self.run_case("official_api_realtime_calls_shape_probe_with_oauth", "official-api-boundary", self.test_official_realtime_calls_shape_probe)
             self.run_case("official_api_embeddings_with_oauth", "official-api-boundary", self.test_official_embeddings_blocked)
@@ -986,13 +1092,18 @@ class Matrix:
             self.run_case("official_api_batches_list_with_oauth", "official-api-catalog", self.test_official_batches_list)
             self.run_case("official_api_fine_tuning_jobs_list_with_oauth", "official-api-catalog", self.test_official_fine_tuning_jobs_list)
             self.run_case("official_api_evals_list_with_oauth", "official-api-catalog", self.test_official_evals_list)
+            self.run_case("official_api_skills_list_with_oauth", "official-api-catalog", self.test_official_skills_list)
             self.run_case("official_api_containers_list_with_oauth", "official-api-catalog", self.test_official_containers_list)
             self.run_case("official_api_videos_list_with_oauth", "official-api-catalog", self.test_official_videos_list)
             self.run_case("official_api_videos_create_shape_with_oauth", "official-api-catalog", self.test_official_videos_create_shape_probe)
             self.run_case("official_api_upload_create_cancel_with_oauth", "official-api-catalog", self.test_official_upload_create_cancel)
             self.run_case("official_api_assistants_list_with_oauth", "official-api-catalog", self.test_official_assistants_list)
+            self.run_case("official_api_conversation_create_delete_with_oauth", "official-api-catalog", self.test_official_conversation_create_delete)
             self.run_case("official_api_thread_create_delete_with_oauth", "official-api-catalog", self.test_official_thread_create_delete)
             self.run_case("official_api_chatkit_session_with_oauth", "official-api-catalog", self.test_official_chatkit_session)
+            self.run_case("official_api_chatkit_threads_list_with_oauth", "official-api-catalog", self.test_official_chatkit_threads_list)
+            self.run_case("official_api_audio_voice_consents_list_with_oauth", "official-api-catalog", self.test_official_audio_voice_consents_list)
+            self.run_case("official_api_audio_voices_create_shape_with_oauth", "official-api-catalog", self.test_official_audio_voices_create_shape_probe)
             self.run_case("official_api_admin_projects_list_with_oauth", "admin-api-oauth", self.test_official_admin_projects_list)
             self.run_case("official_api_admin_users_list_with_oauth", "admin-api-oauth", self.test_official_admin_users_list)
             self.run_case("official_api_admin_keys_list_with_oauth", "admin-api-oauth", self.test_official_admin_keys_list)

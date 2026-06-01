@@ -1,6 +1,8 @@
 artifacts/*
 reports/*.json
+reports/github_api_publish_plan_latest.md
 __pycache__/
+.pycache/
 *.py[cod]
 .venv/
 data/

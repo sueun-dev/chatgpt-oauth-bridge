@@ -82,7 +82,12 @@ def safe_source_summary() -> list[dict[str, Any]]:
 def build_report(*, smoke_text: bool) -> dict[str, Any]:
     sources = load_sources()
     source = choose_runtime_source(sources)
-    models = fetch_codex_models(source.access_token or "")
+    model_discovery_error = None
+    try:
+        models = fetch_codex_models(source.access_token or "")
+    except Exception as exc:
+        models = []
+        model_discovery_error = f"{type(exc).__name__}: {exc}"
     report: dict[str, Any] = {
         "ok": True,
         "selected_source": source.name,
@@ -90,15 +95,17 @@ def build_report(*, smoke_text: bool) -> dict[str, Any]:
         "text_model": choose_text_model(models),
         "image_host_model": choose_image_host_model(models),
         "model_count": len(models),
+        "model_discovery_error": model_discovery_error,
         "token_sources": safe_source_summary(),
         "cli_status": {
             "codex": command_status("codex", ["login", "status"]),
             "hermes": command_status("hermes", ["auth", "status", "openai-codex"]),
         },
         "next_steps": [
-            "Run: PYTHONPATH=src python src/openai_oauth_access.py",
-            "Try examples in USAGE_EXAMPLES.md",
-            "Start the local proxy with: PYTHONPATH=src python src/oauth_openai_compat_server.py --port 8787",
+            "Generate the first-run bundle with: python bridge.py quickstart",
+            "Inspect current readiness with: python bridge.py status",
+            "Run the launch gate from a normal local shell with: python bridge.py live-check",
+            "Check GitHub publish state with: python bridge.py publish-check",
         ],
     }
     if smoke_text:
@@ -125,6 +132,8 @@ def print_human(report: dict[str, Any]) -> None:
     print("OAuth connection is ready.")
     print(f"  selected source: {report['selected_source']} ({report['selected_source_path']})")
     print(f"  models visible:  {report['model_count']}")
+    if report.get("model_discovery_error"):
+        print(f"  model probe:     {report['model_discovery_error']}")
     print(f"  text model:      {report['text_model']}")
     print(f"  image host:      {report['image_host_model']}")
     if "text_smoke" in report:

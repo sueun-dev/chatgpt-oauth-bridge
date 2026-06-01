@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,6 +15,7 @@ import websockets
 
 from codex_oauth import (
     CODEX_BASE_URL,
+    DEFAULT_CODEX_MODEL,
     choose_image_host_model,
     choose_runtime_source,
     choose_text_model,
@@ -28,6 +30,12 @@ from run_oauth_matrix import sanitize_response_text
 CHATGPT_BACKEND_BASE = "https://chatgpt.com/backend-api"
 CODEX_REASONING = {"effort": "xhigh"}
 IMAGE_GENERATION_QUALITY = "high"
+DEFAULT_REALTIME_MODEL = "gpt-realtime"
+RECOMMENDED_REALTIME_MODEL = "gpt-realtime-2"
+DEFAULT_REALTIME_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
+RECOMMENDED_REALTIME_TRANSCRIPTION_MODEL = "gpt-realtime-whisper"
+DEFAULT_REALTIME_TRANSLATION_MODEL = "gpt-realtime-translate"
+DEFAULT_REALTIME_TRANSLATION_TRANSCRIPTION_MODEL = "gpt-realtime-whisper"
 
 
 class OpenAIOAuthAccess:
@@ -37,9 +45,30 @@ class OpenAIOAuthAccess:
         self.sources = load_sources()
         self.source = choose_runtime_source(self.sources)
         self.access_token = self.source.access_token or ""
-        self.model_ids = fetch_codex_models(self.access_token)
-        self.text_model = choose_text_model(self.model_ids)
-        self.image_host_model = choose_image_host_model(self.model_ids)
+        self.model_probe_error: str | None = None
+        try:
+            self.discovered_model_ids = fetch_codex_models(self.access_token)
+        except Exception as exc:
+            self.model_probe_error = f"{type(exc).__name__}: {exc}"
+            self.discovered_model_ids = []
+        self.model_ids = list(self.discovered_model_ids)
+        self.text_model = choose_text_model(self.discovered_model_ids)
+        self.image_host_model = choose_image_host_model(self.discovered_model_ids)
+        self.realtime_model = os.environ.get("OAUTH_BRIDGE_REALTIME_MODEL") or DEFAULT_REALTIME_MODEL
+        self.realtime_transcription_model = (
+            os.environ.get("OAUTH_BRIDGE_REALTIME_TRANSCRIPTION_MODEL")
+            or DEFAULT_REALTIME_TRANSCRIPTION_MODEL
+        )
+        self.realtime_translation_model = (
+            os.environ.get("OAUTH_BRIDGE_REALTIME_TRANSLATION_MODEL")
+            or DEFAULT_REALTIME_TRANSLATION_MODEL
+        )
+        self.realtime_translation_transcription_model = (
+            os.environ.get("OAUTH_BRIDGE_REALTIME_TRANSLATION_TRANSCRIPTION_MODEL")
+            or DEFAULT_REALTIME_TRANSLATION_TRANSCRIPTION_MODEL
+        )
+        if not self.model_ids:
+            self.model_ids = [self.text_model or DEFAULT_CODEX_MODEL]
 
     def _codex_client(self):
         return codex_openai_client(self.access_token)
@@ -457,25 +486,70 @@ class OpenAIOAuthAccess:
             response = client.get(f"{CHATGPT_BACKEND_BASE}{path}", headers=headers, params=params)
         return self._decode_json_response(response)
 
-    def realtime_client_secret(self, *, model: str = "gpt-realtime") -> str:
-        response = self.official_post("/v1/realtime/client_secrets", json_body={
-            "session": {"type": "realtime", "model": model},
+    def realtime_client_secret_payload(
+        self,
+        *,
+        session: Optional[Dict[str, Any]] = None,
+        expires_after: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        session_payload = dict(session or {})
+        session_payload.setdefault("type", "realtime")
+        session_payload.setdefault("model", self.realtime_model)
+        body: Dict[str, Any] = {"session": session_payload}
+        if expires_after:
+            body["expires_after"] = expires_after
+        return self.official_post("/v1/realtime/client_secrets", json_body=body)
+
+    def realtime_client_secret(self, *, model: Optional[str] = None) -> str:
+        response = self.realtime_client_secret_payload(session={
+            "type": "realtime",
+            "model": model or self.realtime_model,
         })
         value = response.get("value")
         if not isinstance(value, str) or not value:
             raise RuntimeError("Realtime client secret response did not contain value.")
         return value
 
-    def realtime_transcription_session(self) -> Dict[str, Any]:
-        return self.official_post("/v1/realtime/client_secrets", json_body={
-            "session": {
+    def realtime_transcription_session(
+        self,
+        *,
+        session: Optional[Dict[str, Any]] = None,
+        expires_after: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        session_payload = dict(
+            session
+            or {
                 "type": "transcription",
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": 24000},
-                        "transcription": {"model": "gpt-4o-mini-transcribe"},
+                        "transcription": {"model": self.realtime_transcription_model},
                         "turn_detection": {"type": "server_vad"},
                     },
+                },
+            }
+        )
+        session_payload.setdefault("type", "transcription")
+        return self.realtime_client_secret_payload(session=session_payload, expires_after=expires_after)
+
+    def realtime_translation_client_secret(
+        self,
+        *,
+        language: str = "es",
+        model: Optional[str] = None,
+        transcription_model: Optional[str] = None,
+        ttl_seconds: int = 600,
+    ) -> Dict[str, Any]:
+        return self.official_post("/v1/realtime/translations/client_secrets", json_body={
+            "expires_after": {"anchor": "created_at", "seconds": ttl_seconds},
+            "session": {
+                "model": model or self.realtime_translation_model,
+                "audio": {
+                    "input": {
+                        "transcription": {"model": transcription_model or self.realtime_translation_transcription_model},
+                        "noise_reduction": None,
+                    },
+                    "output": {"language": language},
                 },
             },
         })
@@ -484,7 +558,7 @@ class OpenAIOAuthAccess:
         self,
         offer_sdp: str,
         *,
-        model: str = "gpt-realtime-1.5",
+        model: Optional[str] = None,
         instructions: str = "You are on a call.",
         voice: str = "marin",
     ) -> Dict[str, Any]:
@@ -493,7 +567,7 @@ class OpenAIOAuthAccess:
         session = json.dumps({
             "tool_choice": "auto",
             "type": "realtime",
-            "model": model,
+            "model": model or self.realtime_model,
             "instructions": instructions,
             "output_modalities": ["audio"],
             "audio": {
@@ -533,7 +607,7 @@ class OpenAIOAuthAccess:
 
     async def _realtime_say_to_pcm_async(self, text: str, output_path: Path) -> Path:
         secret = self.realtime_client_secret()
-        uri = "wss://api.openai.com/v1/realtime?model=gpt-realtime"
+        uri = f"wss://api.openai.com/v1/realtime?model={self.realtime_model}"
         audio_chunks: list[bytes] = []
         async with websockets.connect(
             uri,
@@ -557,7 +631,10 @@ class OpenAIOAuthAccess:
                     raise RuntimeError(sanitize_response_text(json.dumps(event.get("error", event)), limit=800))
                 delta = event.get("delta")
                 if isinstance(delta, str) and "audio" in event_type:
-                    audio_chunks.append(base64.b64decode(delta))
+                    try:
+                        audio_chunks.append(base64.b64decode(delta))
+                    except Exception:
+                        pass
                 if event_type in {"response.done", "response.completed"}:
                     break
         output_path.write_bytes(b"".join(audio_chunks))
@@ -608,9 +685,19 @@ def main() -> int:
         "codex_base_url": CODEX_BASE_URL,
         "text_model": oauth.text_model,
         "image_host_model": oauth.image_host_model,
+        "model_count": len(oauth.discovered_model_ids),
+        "local_model_count": len(oauth.model_ids),
+        "model_discovery_error": oauth.model_probe_error,
         "reasoning": CODEX_REASONING,
         "image_generation_model": "gpt-image-2",
         "image_generation_quality": IMAGE_GENERATION_QUALITY,
+        "realtime_model": oauth.realtime_model,
+        "realtime_model_recommended_current_guide": RECOMMENDED_REALTIME_MODEL,
+        "realtime_transcription_model": oauth.realtime_transcription_model,
+        "realtime_transcription_model_recommended_current_guide": RECOMMENDED_REALTIME_TRANSCRIPTION_MODEL,
+        "realtime_translation_model": oauth.realtime_translation_model,
+        "realtime_translation_transcription_model": oauth.realtime_translation_transcription_model,
+        "working_methods_note": "Implemented wrapper methods; live success still depends on current token scopes and network reachability.",
         "working_methods": [
             "codex_text",
             "codex_vision",
@@ -619,6 +706,7 @@ def main() -> int:
             "official_embedding",
             "realtime_client_secret",
             "realtime_transcription_session",
+            "realtime_translation_client_secret",
             "realtime_webrtc_call_offer",
             "realtime_say_to_pcm",
             "chatgpt_upload_file",

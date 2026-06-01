@@ -1,6 +1,6 @@
 # Codex Apps MCP Tools Inventory
 
-- Generated: `2026-05-11T23:53:23Z`
+- Generated: `2026-05-29T21:56:36Z`
 - HTTP status: `200`
 - Tools listed: `111`
 - Prefix counts: `{'github': 90, 'gmail': 21}`
@@ -29,14 +29,14 @@
 | `mutation-capable` | `github_create_tree` | Create a tree object in the repository from the given elements. |
 | `mutation-capable` | `github_delete_file` | Delete a file through GitHub's contents API. Returns only the resulting commit SHA. Docs: https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#delete-a-file |
 | `mutation-capable` | `github_dismiss_pull_request_review` | Dismiss a submitted pull request review. Returns the normalized review snapshot after dismissal. Docs: https://docs.github.com/en/graphql/reference/mutations#dismisspullrequestreview |
-| `read-like` | `github_download_user_content` | Download user-supplied content from a GitHub URL. Use this when the model needs to inspect a GitHub-hosted artifact that is not already exposed as structured repository or pull request metadata. |
+| `read-like` | `github_download_user_content` | Download a GitHub private user image attachment URL. Use this only for private-user-images.githubusercontent.com URLs, such as GitHub issue or pull request image uploads. Use fetch or fetch_file for repository files. |
 | `mutation-capable` | `github_download_workflow_artifact` | Download a GitHub Actions workflow artifact ZIP archive. GitHub serves this endpoint through a temporary redirect; the underlying client follows that redirect before returning a reusable file reference for the ZIP bytes. |
 | `mutation-capable` | `github_enable_auto_merge` | Enable auto-merge for a pull request. This wrapper infers the merge method from repository settings and returns only `success`. Docs: https://docs.github.com/en/graphql/reference/mutations#enablepullrequestautomerge |
 | `read-like` | `github_fetch` | Fetch a UTF-8 text file from GitHub by URL. Use a file URL such as ``https://github.com/owner/repo/blob/branch/path/to/file.py``. ``raw.githubusercontent.com`` file URLs and ``api.github.com/repos/.../contents/...`` URLs |
 | `read-like` | `github_fetch_blob` | Fetch blob content by SHA from the given repository. |
 | `read-like` | `github_fetch_commit` | Fetch a commit with its metadata, diff, and canonical URL. |
 | `read-like` | `github_fetch_commit_workflow_runs` | Fetch GitHub Actions workflow runs associated with a commit SHA. This wrapper currently filters to pull-request-triggered runs and returns the first page only. Docs: https://docs.github.com/en/rest/actions/workflow-runs? |
-| `read-like` | `github_fetch_file` | Fetch file content by path and ref from the given repository. |
+| `read-like` | `github_fetch_file` | Fetch file content by repository path, using the default branch when ref is omitted. |
 | `read-like` | `github_fetch_issue` | Fetch GitHub issue. |
 | `read-like` | `github_fetch_issue_comments` | Fetch comments for a GitHub issue across all pages. |
 | `read-like` | `github_fetch_pr` | Fetch a pull request with its diff, metadata, and optionally comments. |
@@ -54,7 +54,7 @@
 | `read-like` | `github_get_pr_reactions` | Fetch reactions for a GitHub pull request. |
 | `read-like` | `github_get_pr_review_comment_reactions` | Fetch reactions for a pull request review comment. |
 | `read-like` | `github_get_profile` | Retrieve the GitHub profile for the authenticated user. |
-| `read-like` | `github_get_repo` | Retrieve metadata for a GitHub repository. |
+| `read-like` | `github_get_repo` | Retrieve metadata for a GitHub repository. Provide exactly one repository locator: - `repository_full_name`: `owner/name`, such as `openai/openai`. Maps to GitHub REST `owner` and `repo` path parameters. - `repository_id |
 | `read-like` | `github_get_repo_collaborator_permission` | Return the collaborator permission level for a user on a repository. |
 | `read-like` | `github_get_user_login` | Return the GitHub login for the authenticated user. |
 | `read-like` | `github_get_users_recent_prs_in_repo` | List the user's recent GitHub pull requests in a repository. `limit` is the final number of PRs returned. The connector paginates the underlying GitHub search endpoint to satisfy larger limits. |
