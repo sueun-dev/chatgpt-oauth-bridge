@@ -170,6 +170,40 @@ OAuth bridge publish check: ready
 Published tree matches the configured upstream branch.
 ```
 
+After the handoff commit, a fresh environment probe passed:
+
+```bash
+python3 bridge.py env
+```
+
+Observed result:
+
+```text
+token_source: ok=True source=codex-cli
+codex_model_discovery: ok=True status=200 model_count=7
+localhost_bind: ok=True
+diagnostics: dns_or_network_blocked=False localhost_socket_denied=False live_environment_ok=True
+```
+
+A fresh live launch check still failed:
+
+```bash
+python3 bridge.py live-check --no-write
+```
+
+Observed result:
+
+```text
+OAuth bridge live launch check: fail
+pass: environment_probe
+fail: http_proxy_smoke
+fail: openai_python_sdk_smoke
+pass: readiness_report
+fail: doctor_strict
+```
+
+So the current blocker is no longer basic network or localhost access in this shell. The remaining blocker is functional live/package smoke behavior.
+
 ## Known limits
 
 Do not claim any of these until they are actually true on the machine being used:
@@ -241,4 +275,3 @@ python3 bridge.py publish-check --no-write --strict
 2. Run the actual `serve` plus `smoke` and `sdk-smoke` path if localhost binding works.
 3. Refresh official OpenAI API coverage before making public claims, because API surfaces can change.
 4. Only after live checks pass, update the README wording from local-ready to launch-ready if that is still accurate.
-

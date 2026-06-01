@@ -1,22 +1,21 @@
 # OAuth Bridge Environment Probe
 
-- Generated: `2026-06-01T17:48:37Z`
+- Generated: `2026-06-01T18:07:40Z`
 
 ## Checks
 
 | Check | OK | Evidence |
 |---|---|---|
-| Token source | `True` | `source=codex-cli; has_access_token=True; seconds_remaining=422558; error=None` |
-| Codex model discovery | `False` | `http_status=None; model_count=None; error_type=ConnectError; error=[Errno 8] nodename nor servname provided, or not known` |
-| Localhost bind | `False` | `host=127.0.0.1; port=0; error_type=PermissionError; error=[Errno 1] Operation not permitted` |
+| Token source | `True` | `source=codex-cli; has_access_token=True; seconds_remaining=421416; error=None` |
+| Codex model discovery | `True` | `http_status=200; model_count=7; error_type=None; error=None` |
+| Localhost bind | `True` | `host=127.0.0.1; port=51228; error_type=None; error=None` |
 
 ## Diagnostics
 
-- DNS/network blocked: `True`
-- Localhost socket denied: `True`
-- Live environment OK: `False`
+- DNS/network blocked: `False`
+- Localhost socket denied: `False`
+- Live environment OK: `True`
 
 ## Next Actions
 
-- Run from a shell with DNS/network access to chatgpt.com, github.com, and api.openai.com.
-- Run from a normal local shell; this sandbox denies socket bind for every localhost port.
+- No environment blocker detected by this probe.
