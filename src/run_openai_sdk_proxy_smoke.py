@@ -74,7 +74,7 @@ class OpenAISDKProxySmoke:
             lambda: self._models_row(client),
             expect=lambda row: row.get("object") == "list" and int(row.get("data_count", 0)) > 0,
         )
-        model_row = self.record(
+        self.record(
             "sdk_models_retrieve",
             lambda: self._models_retrieve_row(client),
             expect=lambda row: bool(row.get("id")) and row.get("object") == "model",

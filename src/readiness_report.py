@@ -140,7 +140,7 @@ def build_report() -> Dict[str, Any]:
 
     payload = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "goal_complete": False if blockers else True,
+        "goal_complete": not blockers,
         "hosted_oauth_complete": direct_oauth == official_paths,
         "local_bridge_surface_complete": not bool(api_key_required or incomplete_or_resource_bound),
         "bottom_line": (

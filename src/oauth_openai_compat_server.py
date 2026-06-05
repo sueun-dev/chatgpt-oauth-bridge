@@ -1059,7 +1059,7 @@ class CompatHandler(BaseHTTPRequestHandler):
         )
 
     def handle_audio_transcriptions(self) -> None:
-        fields, files = self.read_multipart_form()
+        _fields, files = self.read_multipart_form()
         file_item = files.get("file")
         if not file_item:
             raise ValueError("multipart field 'file' is required")
