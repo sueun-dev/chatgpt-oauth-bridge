@@ -6,7 +6,6 @@ import json
 import os
 import time
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 

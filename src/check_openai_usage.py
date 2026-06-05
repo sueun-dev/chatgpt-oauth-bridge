@@ -6,7 +6,7 @@ import re
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable
 
 from classify_openai_path import classify, normalize_path
 from generate_compatibility_guide import CATEGORY_ACTIONS

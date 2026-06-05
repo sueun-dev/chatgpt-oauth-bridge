@@ -7,7 +7,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-from generate_coverage_map import BLOCKED_CATEGORIES, READY_CATEGORIES
 from platform_fallback import (
     ACCESS_TOKEN_ENV,
     ADMIN_KEY_ENV,
@@ -261,8 +260,8 @@ def write_reports(payload: Dict[str, Any]) -> None:
         f"- Strict hosted OAuth allow: `{payload['summary']['allow_oauth_only']}`",
         f"- Strict hosted OAuth deny: `{payload['summary']['deny_oauth_only']}`",
         f"- Platform fallback candidates: `{payload['summary']['platform_fallback_candidates']}`",
-        f"- JSON: `reports/openai_bridge_route_policy.json`",
-        f"- CSV: `reports/openai_bridge_route_policy.csv`",
+        "- JSON: `reports/openai_bridge_route_policy.json`",
+        "- CSV: `reports/openai_bridge_route_policy.csv`",
         "",
         "## Consumer Guidance",
         "",
