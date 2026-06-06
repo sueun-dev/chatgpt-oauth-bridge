@@ -44,7 +44,6 @@ The local sweep found exceptions in this account for:
 
 - `POST /v1/audio/transcriptions`
 - `POST /v1/realtime/client_secrets`
-- Realtime WebSocket with the OAuth-created ephemeral key
 - Realtime transcription setup through `POST /v1/realtime/client_secrets` with
   `session.type="transcription"`. The local proxy exposes
   `/v1/realtime/transcription_sessions` as a compatibility alias over that
@@ -52,23 +51,22 @@ The local sweep found exceptions in this account for:
 - Realtime translation setup through
   `POST /v1/realtime/translations/client_secrets`.
 - `POST /v1/embeddings`
-- `POST /v1/realtime/calls`; OAuth reached the route with both documented
-  `application/sdp` and multipart shapes. The realistic multipart WebRTC offer
-  returned `201`, a `Location` header, and an answer SDP.
-  The lifecycle routes under `/v1/realtime/calls/{call_id}/...` are exposed by
-  the local proxy as state-recording compatibility handlers, not as hosted
-  lifecycle mutation proof.
 - `POST /v1/conversations` reached route validation, but the current probe
   stopped at `Project ID must be set for the request`; it is not proven as a
   complete OAuth replacement.
 - `POST /v1/realtime/sessions` returned invalid-url/not-routed in this
   deployment, so the local proxy exposes it only as a compatibility alias over
   `/v1/realtime/client_secrets`.
+- Realtime WebSocket media is not verified in the current run. The matrix marks
+  `official_api_realtime_audio_websocket_with_oauth` as `not_available`.
+- `POST /v1/realtime/calls` is not verified in the current run. The direct
+  OAuth probe returned HTTP `500`, and the shape probe reached auth but
+  returned HTTP `400` for the test payload.
 
 The current `reports/openai_surface_audit_latest.md` classifies `172`
-documented OpenAI API paths: `5` direct official OAuth-verified paths, `167`
+documented OpenAI API paths: `4` direct official OAuth-verified paths, `167`
 local/ChatGPT-backend compatibility paths, `0` API-key/Admin-key required
-paths, `0` not available in this deployment, `0` auth-reached-but-not-complete
+paths, `1` not available, `0` auth-reached-but-not-complete
 paths, and `0` resource-bound paths.
 
 On the current verification pass, the official OpenAI Developer Docs endpoint

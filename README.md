@@ -6,60 +6,138 @@ This project maps what currently works with a user-owned Codex/ChatGPT OAuth tok
 
 It is not an official OpenAI SDK and it does not bypass authorization. If a route rejects the OAuth token, the test runner records that boundary instead of pretending it worked.
 
-## What Works
+## Current Tested Status
 
-Confirmed on the latest local run:
+Latest checked local evidence from June 6, 2026 UTC:
 
+- `python3 bridge.py smoke --include-images`: `108/108` pass.
+- `python3 bridge.py sdk-smoke --include-images`: `90/90` pass.
+- `PYTHONPATH=src python3 src/run_oauth_matrix.py`: `53` probes, `12` pass,
+  `35` expected_blocked, `4` not_available,
+  `2` auth_accepted_request_invalid, `0` fail.
+- `python3 bridge.py audit`: `172` documented OpenAI API paths,
+  `4` direct official OAuth-verified paths,
+  `167` local/ChatGPT-backend compatibility paths,
+  `0` API-key/Admin-key required,
+  `1` not available,
+  `0` auth-reached-but-not-complete,
+  `0` resource-bound.
+
+The bridge is useful for local OpenAI-shaped workflows, but it is not a full
+OpenAI Platform API OAuth replacement. Local compatibility means this repo
+returns OpenAI-shaped objects through Codex/ChatGPT backends or local state; it
+does not prove the hosted Platform endpoint accepts a ChatGPT/Codex OAuth token.
+
+## What Works With OAuth
+
+Direct official OpenAI paths that accepted the current Codex/ChatGPT OAuth token:
+
+- `/v1/audio/transcriptions`
+- `/v1/embeddings`
+- `/v1/realtime/client_secrets`
+- `/v1/realtime/translations/client_secrets`
+
+ChatGPT/Codex OAuth-backed features that passed in the current matrix:
+
+- Codex model discovery
 - Codex text responses
 - Codex vision input
-- Codex image and drawing generation
-- Official `/v1/audio/transcriptions`
-- Official `/v1/embeddings`
-- Official Realtime client secrets
-- Realtime WebSocket audio output
-- Realtime transcription client secrets and local session aliases
-- Realtime translation client secrets
-- Realtime WebRTC call setup with a real SDP offer
-- Local Realtime call lifecycle state for accept/hangup/refer/reject
-- Local audio voice catalog and voice consent/custom voice metadata
-- ChatGPT/Codex backend file upload
-- ChatGPT plugin and connector catalog reads
-- Codex task/environment metadata reads
-- Codex Apps MCP discovery and read-only public GitHub search
-- Local files, upload sessions, batches, vector stores, moderations, evals,
-  fine-tuning job/checkpoint metadata, fine-tuning grader preflight,
-  Assistants, Threads, Conversations, Skills, containers, Audio custom-voice
-  metadata, ChatKit, video storyboard/job metadata, and
-  Organization/Project/Usage sandbox compatibility layers
-- Local `/v1` proxy for models, skills, responses, response compaction, legacy completions, chat completions, embeddings,
-  images, speech, transcriptions/translations, Realtime session aliases and call lifecycle state, files, uploads, batches, vector stores,
-  moderations, fine-tuning jobs/checkpoints, fine-tuning grader run/validate,
-  Assistants/Threads, Organization/Project/Usage sandbox routes, video
-  storyboard/content-manifest routes, and local eval helpers
+- Codex image generation
+- Codex drawing generation
 
-Latest official API surface audit:
+Local `/v1` proxy compatibility that passed the HTTP and SDK smokes:
 
-- `172` documented OpenAI API paths parsed
-- `5` direct official OAuth-verified paths
-- `167` local/ChatGPT-backend compatibility paths
-- `0` API-key/Admin-key required paths
-- `0` not available in this deployment
-- `0` auth-reached-but-not-complete paths
-- `0` resource-bound paths
+- Models, responses, response streaming, response compaction, legacy
+  completions, chat completions, and chat streaming.
+- Embeddings through the official OAuth-accepted embedding route.
+- Image generations through Codex image generation.
+- Image edits and variations through Codex vision plus Codex image generation.
+- Audio transcriptions through the official OAuth-accepted STT route.
+- `/v1/audio/speech` as local compatibility only. It tries Realtime audio
+  synthesis first and then falls back to local PCM16 audio when upstream
+  Realtime audio is not usable, so callers get audio instead of a generic 500.
+- Audio translations through OAuth transcription plus Codex text translation.
+- Files, uploads, batches, vector stores, moderations, evals, fine-tuning
+  metadata, fine-tuning grader preflight, Assistants, Threads, Conversations,
+  Skills, containers, ChatKit, video storyboard metadata, and
+  Organization/Project/Usage sandbox metadata as local compatibility layers.
+- Realtime session aliases through `/v1/realtime/client_secrets` and local
+  call lifecycle state for accept/hangup/refer/reject.
 
-Known boundaries:
+## Not OAuth-Only
 
-- The audit no longer has an unclassified API/Admin-key-required bucket, but
-  that does not make ChatGPT/Codex OAuth a hosted OpenAI Platform credential.
-  OpenAI Platform `/v1/responses`, `/v1/chat/completions`, `/v1/images/...`,
-  `/v1/audio/speech`, `/v1/files`, hosted batches, hosted vector stores,
-  hosted fine-tuning training and real checkpoint permission changes, hosted
-  evals, hosted video/Sora rendering, hosted containers, hosted
-  Assistants/Threads, hosted ChatKit, hosted Skills, and real Admin/Usage data
-  or mutations still need official Platform/Admin credentials when you need the
-  real hosted server-side resource.
-- Some features are handled honestly through local compatibility layers, for example Realtime session aliases through OAuth `/v1/realtime/client_secrets`, local Realtime call lifecycle state, local Conversations/items, local Skills registry/bundles, local ChatKit sessions/threads/items, local container metadata/files, local image edits/variations via Codex vision plus image generation, local audio translation via OAuth transcription plus Codex text, local audio voice catalog/consent metadata, local upload sessions, local batch processing, local vector stores plus OAuth embeddings, local heuristic moderation, local fine-tuning job/checkpoint/event/permission metadata, local Organization/Project/Usage sandbox metadata, local video storyboard/job metadata plus JSON content manifests, local fine-tuning grader preflight for `string_check`/`multi`, local Assistants/Threads orchestration, and local evals.
-- Official hosted OpenAI API access should use documented Platform bearer credentials: API keys, Admin API keys for admin surfaces, or official workload identity federation access tokens where applicable. This repo does not convert a ChatGPT/Codex OAuth session into a general hosted Platform credential.
+These are not working as real hosted Platform features with only a
+ChatGPT/Codex OAuth token:
+
+- Real Realtime voice WebSocket media. The current matrix marks
+  `official_api_realtime_audio_websocket_with_oauth` as `not_available`.
+- Real `/v1/realtime/calls`. The current direct OAuth probe returned HTTP `500`
+  for `/v1/realtime/calls`, and the shape probe reached auth but returned HTTP
+  `400` for the test payload. The audit classifies `/v1/realtime/calls` as
+  `not_available_current_deployment`, not as a verified working voice call path.
+- Official hosted TTS direct call. `/v1/audio/speech` rejected the OAuth token
+  with HTTP `401`; the local bridge speech route is a compatibility fallback,
+  not official hosted OpenAI TTS.
+- Hosted Platform resource creation or management. Hosted Files, Uploads,
+  Batches, Vector Stores, Fine-tuning, Evals, Videos/Sora, Containers,
+  Assistants/Threads, ChatKit, Skills, Organization/Admin, Usage, Costs, and
+  Project management still require official Platform/Admin credentials when the
+  caller needs the real hosted server-side resource.
+
+Official hosted OpenAI API access should use documented Platform bearer
+credentials: API keys, Admin API keys for admin surfaces, or official workload
+identity federation access tokens where applicable. This repo does not convert
+a ChatGPT/Codex OAuth session into a general hosted Platform credential.
+
+## Realtime Voice References
+
+These repos are the useful starting points when the goal is real Realtime voice,
+WebRTC, WebSocket, or phone-call behavior. They require official Platform
+credentials such as `OPENAI_API_KEY`; they are not proof that OAuth-only works.
+
+Official OpenAI examples:
+
+- [`openai/openai-realtime-agents`](https://github.com/openai/openai-realtime-agents)
+  - Realtime voice agents demo.
+- [`openai/openai-realtime-console`](https://github.com/openai/openai-realtime-console)
+  - Realtime API console. Current path is WebRTC; the older WebSocket version is
+  kept on a separate branch.
+- [`openai/realtime-voice-component`](https://github.com/openai/realtime-voice-component)
+  - React/browser voice component and `/v1/realtime/calls` proxy reference.
+- [`openai/openai-realtime-twilio-demo`](https://github.com/openai/openai-realtime-twilio-demo)
+  - Twilio phone-call demo with OpenAI Realtime.
+- [`openai/openai-realtime-embedded`](https://github.com/openai/openai-realtime-embedded)
+  - Embedded-device Realtime API instructions.
+- [`openai/openai-realtime-api-beta`](https://github.com/openai/openai-realtime-api-beta)
+  - Older beta Realtime reference client. Useful for history, not the preferred
+  current GA path.
+
+Phone-call and voice-agent samples:
+
+- [`twilio-samples/speech-assistant-openai-realtime-api-node`](https://github.com/twilio-samples/speech-assistant-openai-realtime-api-node)
+- [`twilio-samples/speech-assistant-openai-realtime-api-python`](https://github.com/twilio-samples/speech-assistant-openai-realtime-api-python)
+- [`twilio-samples/live-translation-openai-realtime-api`](https://github.com/twilio-samples/live-translation-openai-realtime-api)
+- [`livekit/agents`](https://github.com/livekit/agents)
+- [`realtime-ai/realtime-ai`](https://github.com/realtime-ai/realtime-ai)
+- [`langwatch/openclaw-phone-assistant`](https://github.com/langwatch/openclaw-phone-assistant)
+
+Recent community examples around `gpt-realtime-2`, browser WebRTC, or calls:
+
+- [`diegocp01/gpt-realtime-2`](https://github.com/diegocp01/gpt-realtime-2)
+- [`diegocp01/peter_ai`](https://github.com/diegocp01/peter_ai)
+- [`YOSSII812001/gpt-realtime-2-voice-chat`](https://github.com/YOSSII812001/gpt-realtime-2-voice-chat)
+- [`backblaze-b2-samples/gpt-realtime-2-customer-support-voice-agent`](https://github.com/backblaze-b2-samples/gpt-realtime-2-customer-support-voice-agent)
+- [`Barty-Bart/openai-realtime-api-voice-assistant`](https://github.com/Barty-Bart/openai-realtime-api-voice-assistant)
+- [`Barty-Bart/openai-realtime-api-voice-assistant-V2`](https://github.com/Barty-Bart/openai-realtime-api-voice-assistant-V2)
+- [`Szotasz/openai-realtime-demo`](https://github.com/Szotasz/openai-realtime-demo)
+- [`JoseAI-Automatizaciones/realtime-lab`](https://github.com/JoseAI-Automatizaciones/realtime-lab)
+- [`kirill-markin/meta-glasses-ios-openai`](https://github.com/kirill-markin/meta-glasses-ios-openai)
+
+For official hosted TTS and hosted Platform resource management, start with the
+official SDKs instead of Realtime demos:
+
+- [`openai/openai-node`](https://github.com/openai/openai-node)
+- [`openai/openai-python`](https://github.com/openai/openai-python)
 
 ## Install
 
