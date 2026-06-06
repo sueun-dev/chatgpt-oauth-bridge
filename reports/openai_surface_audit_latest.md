@@ -1,10 +1,9 @@
 # OpenAI API Surface Audit
 
-- Generated: `2026-06-01T16:15:21Z`
-- OpenAPI source: `existing-report:https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml`
+- Generated: `2026-06-06T13:32:42Z`
+- OpenAPI source: `https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml`
 - Official paths parsed: `172`
-- Matrix report: `reports/latest.json` from `2026-05-29T21:53:12Z` to `2026-05-29T21:55:56Z`
-- Source warning: Could not refresh the OpenAPI source in this environment; reused path list from reports/openai_surface_audit_latest.json generated at 2026-06-01T16:11:23Z. Fetch error: RuntimeError: Could not fetch or parse OpenAI OpenAPI paths. https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml: ConnectError: [Errno 8] nodename nor servname provided, or not known; https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml: ConnectError: [Errno 8] nodename nor servname provided, or not known
+- Matrix report: `reports/latest.json` from `2026-06-06T13:29:50Z` to `2026-06-06T13:32:30Z`
 
 ## Bottom Line
 
@@ -14,8 +13,9 @@ This bridge does not make every OpenAI Platform endpoint available through ChatG
 
 | Category | Paths |
 |---|---:|
-| `direct_official_oauth_verified` | 5 |
+| `direct_official_oauth_verified` | 4 |
 | `local_compat_or_chatgpt_backend_bridge` | 167 |
+| `not_available_current_deployment` | 1 |
 
 ## Full Path Classification
 
@@ -139,7 +139,7 @@ This bridge does not make every OpenAI Platform endpoint available through ChatG
 | `/projects/{project_id}/roles/{role_id}` | `local_compat_or_chatgpt_backend_bridge` | Hosted organization/project administration requires Admin credentials; local /v1/organization... and /v1/projects... return sandbox metadata and mutation-shaped responses for SDK/app compatibility without changing real org resources. | `offline:organization_project_sandbox=pass` |
 | `/projects/{project_id}/users/{user_id}/roles` | `local_compat_or_chatgpt_backend_bridge` | Hosted organization/project administration requires Admin credentials; local /v1/organization... and /v1/projects... return sandbox metadata and mutation-shaped responses for SDK/app compatibility without changing real org resources. | `offline:organization_project_sandbox=pass` |
 | `/projects/{project_id}/users/{user_id}/roles/{role_id}` | `local_compat_or_chatgpt_backend_bridge` | Hosted organization/project administration requires Admin credentials; local /v1/organization... and /v1/projects... return sandbox metadata and mutation-shaped responses for SDK/app compatibility without changing real org resources. | `offline:organization_project_sandbox=pass` |
-| `/realtime/calls` | `direct_official_oauth_verified` | Official Realtime WebRTC call creation accepted a realistic multipart SDP offer. | `official_api_realtime_calls_with_oauth=pass` |
+| `/realtime/calls` | `not_available_current_deployment` | Official Realtime WebRTC call creation is documented, but the current Codex/ChatGPT OAuth probe did not produce a usable hosted call. Use Platform credentials for this route. | `official_api_realtime_calls_with_oauth=not_available` |
 | `/realtime/calls/{call_id}/accept` | `local_compat_or_chatgpt_backend_bridge` | Official call lifecycle routes need a real call id; local /v1/realtime/calls/{call_id}/{accept,hangup,refer,reject} records lifecycle state for SDK/app compatibility without claiming hosted mutation proof. | `offline:realtime_call_lifecycle=pass` |
 | `/realtime/calls/{call_id}/hangup` | `local_compat_or_chatgpt_backend_bridge` | Official call lifecycle routes need a real call id; local /v1/realtime/calls/{call_id}/{accept,hangup,refer,reject} records lifecycle state for SDK/app compatibility without claiming hosted mutation proof. | `offline:realtime_call_lifecycle=pass` |
 | `/realtime/calls/{call_id}/refer` | `local_compat_or_chatgpt_backend_bridge` | Official call lifecycle routes need a real call id; local /v1/realtime/calls/{call_id}/{accept,hangup,refer,reject} records lifecycle state for SDK/app compatibility without claiming hosted mutation proof. | `offline:realtime_call_lifecycle=pass` |

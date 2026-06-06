@@ -1,12 +1,11 @@
 # OAuth Compatibility Quick Guide
 
-- Generated: `2026-06-01T17:49:54Z`
+- Generated: `2026-06-06T13:20:39Z`
 - Compatibility map complete: `True`
 - Hosted OpenAI OAuth complete: `False`
 - Bottom line: Complete as a compatibility map: every documented path has either direct OAuth evidence or a named local bridge path. Only 5 paths are direct hosted OAuth; 167 paths are local or ChatGPT-backend compatibility.
-- OpenAPI source: `existing-report:https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml`
+- OpenAPI source: `https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml`
 - Official paths: `172`
-- Source warning: Could not refresh the OpenAPI source in this environment; reused path list from reports/openai_surface_audit_latest.json generated at 2026-06-01T16:11:23Z. Fetch error: RuntimeError: Could not fetch or parse OpenAI OpenAPI paths. https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml: ConnectError: [Errno 8] nodename nor servname provided, or not known; https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml: ConnectError: [Errno 8] nodename nor servname provided, or not known
 
 ## What To Do
 
@@ -21,7 +20,7 @@
 |---|---|---|---|
 | `/audio/transcriptions` | `direct_official_oauth_verified` | Official OAuth verified | `official_api_stt_with_oauth=pass` |
 | `/embeddings` | `direct_official_oauth_verified` | Official OAuth verified | `official_api_embeddings_with_oauth=pass` |
-| `/realtime/calls` | `direct_official_oauth_verified` | Official OAuth verified | `official_api_realtime_calls_with_oauth=pass` |
+| `/realtime/calls` | `direct_official_oauth_verified` | Official OAuth verified | `official_api_realtime_calls_with_oauth=not_available` |
 | `/realtime/client_secrets` | `direct_official_oauth_verified` | Official OAuth verified | `official_api_realtime_with_oauth=pass` |
 | `/realtime/translations/client_secrets` | `direct_official_oauth_verified` | Official OAuth verified | `official_api_realtime_translation_client_secret_with_oauth=pass` |
 | `/assistants` | `local_compat_or_chatgpt_backend_bridge` | Use local bridge | `offline:assistant_thread_run=pass; offline:thread_run_steps=pass` |

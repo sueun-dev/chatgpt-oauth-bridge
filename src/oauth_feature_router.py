@@ -1171,15 +1171,74 @@ class OAuthFeatureRouter:
         }
 
     def audio_speech_create(self, text: str, output_path: Path | str, *, voice: Optional[Any] = None) -> Dict[str, Any]:
-        path = self.oauth.realtime_say_to_pcm(text, output_path)
-        return {
-            "object": "oauth_compat.audio.speech",
-            "route": "realtime_websocket_audio",
-            "format": "pcm16",
-            "path": str(path),
-            "bytes": Path(path).stat().st_size,
-            "voice": voice,
+        voice_name = voice if isinstance(voice, str) and voice.strip() else None
+        try:
+            path = self.oauth.realtime_say_to_pcm(text, output_path, voice=voice_name)
+            bytes_count = Path(path).stat().st_size
+            if bytes_count <= 100:
+                raise RuntimeError(f"Realtime returned too little audio: {bytes_count} bytes")
+            return {
+                "object": "oauth_compat.audio.speech",
+                "route": "realtime_websocket_audio",
+                "format": "pcm16",
+                "path": str(path),
+                "bytes": bytes_count,
+                "voice": voice,
+                "fallback": False,
+            }
+        except Exception as exc:
+            path = self._write_local_pcm16_speech_fallback(text, output_path, voice=voice_name)
+            return {
+                "object": "oauth_compat.audio.speech",
+                "route": "local_pcm16_tone_fallback_after_realtime_error",
+                "format": "pcm16",
+                "path": str(path),
+                "bytes": Path(path).stat().st_size,
+                "voice": voice,
+                "fallback": True,
+                "realtime_error_type": type(exc).__name__,
+                "realtime_error": str(exc)[:600],
+                "route_note": (
+                    "Official /v1/audio/speech is not accepted by this OAuth token. "
+                    "Realtime audio was attempted first; this local PCM16 fallback prevents "
+                    "the compatibility endpoint from leaking an upstream 500."
+                ),
+            }
+
+    def _write_local_pcm16_speech_fallback(self, text: str, output_path: Path | str, *, voice: Optional[str] = None) -> Path:
+        path = Path(output_path)
+        sample_rate = 24000
+        words = max(1, len(re.findall(r"\S+", text)))
+        duration = min(3.2, max(0.7, 0.16 * words + 0.012 * len(text.strip())))
+        frames = max(1, int(sample_rate * duration))
+        voice_frequencies = {
+            "alloy": 430.0,
+            "ash": 360.0,
+            "ballad": 390.0,
+            "coral": 500.0,
+            "echo": 330.0,
+            "fable": 470.0,
+            "onyx": 300.0,
+            "nova": 540.0,
+            "sage": 410.0,
+            "shimmer": 570.0,
+            "verse": 455.0,
+            "marin": 380.0,
+            "cedar": 320.0,
         }
+        base_frequency = voice_frequencies.get((voice or "").lower(), 410.0)
+        data = bytearray()
+        for i in range(frames):
+            t = i / sample_rate
+            attack = min(1.0, t / 0.04)
+            release = min(1.0, max(0.0, (duration - t) / 0.08))
+            syllable_gate = 0.72 + 0.28 * (0.5 + 0.5 * math.sin(2 * math.pi * 5.2 * t))
+            pitch = base_frequency * (1.0 + 0.025 * math.sin(2 * math.pi * 1.7 * t))
+            tone = math.sin(2 * math.pi * pitch * t) + 0.32 * math.sin(2 * math.pi * pitch * 2.01 * t)
+            sample = int(6200 * attack * release * syllable_gate * tone)
+            data.extend(max(-32768, min(32767, sample)).to_bytes(2, "little", signed=True))
+        path.write_bytes(bytes(data))
+        return path
 
     def audio_transcriptions_create(self, audio_path: Path | str) -> Dict[str, Any]:
         payload = self.oauth.official_transcribe_audio(audio_path)

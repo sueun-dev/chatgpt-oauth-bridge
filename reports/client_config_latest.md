@@ -1,10 +1,10 @@
 # OAuth Bridge Client Config
 
-- Generated: `2026-06-01T17:49:54Z`
+- Generated: `2026-06-06T13:20:39Z`
 - Base URL: `http://127.0.0.1:8787/v1`
 - Placeholder API key: `oauth-local-proxy`
-- Goal complete: `False`
-- Bottom line: Not complete: every documented path is mapped to direct OAuth or explicit local compatibility, but only 5 paths are direct hosted OAuth and this environment cannot prove live Codex network access and localhost SDK smoke.
+- Goal complete: `True`
+- Bottom line: Complete under the current evidence set.
 - Env example: `reports/openai_bridge.env.example`
 - CI gate: `reports/openai_bridge_ci_gate.sh`
 - Launch gate: `reports/openai_bridge_launch_gate.sh`

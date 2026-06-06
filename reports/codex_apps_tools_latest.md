@@ -1,10 +1,10 @@
 # Codex Apps MCP Tools Inventory
 
-- Generated: `2026-05-29T21:56:36Z`
+- Generated: `2026-06-06T12:43:34Z`
 - HTTP status: `200`
-- Tools listed: `111`
-- Prefix counts: `{'github': 90, 'gmail': 21}`
-- Class counts: `{'mutation-capable': 66, 'read-like': 45}`
+- Tools listed: `110`
+- Prefix counts: `{'github': 89, 'gmail': 21}`
+- Class counts: `{'mutation-capable': 66, 'read-like': 44}`
 - Source route: `POST https://chatgpt.com/backend-api/wham/apps` with `tools/list`
 - This is metadata only. Personal-data or write-capable tools were not called.
 
@@ -17,12 +17,11 @@
 | `mutation-capable` | `github_add_reaction_to_pr` | Add a reaction to a GitHub pull request. |
 | `mutation-capable` | `github_add_reaction_to_pr_review_comment` | Add a reaction to a pull request review comment. |
 | `mutation-capable` | `github_add_review_to_pr` | Add a review to a GitHub pull request. review is required for REQUEST_CHANGES and COMMENT events. |
-| `read-like` | `github_check_repo_initialized` | Check if a GitHub repository has been set up. |
 | `read-like` | `github_compare_commits` | Compare two commits/refs and return per-file stats plus compare metadata. This is a thin wrapper around `GithubPlugin.compare_commits` to provide a stable, compact response shape to connector consumers. |
 | `mutation-capable` | `github_convert_pull_request_to_draft` | Convert an open pull request back to draft state. Returns the connector's normalized PR snapshot after the transition. Docs: https://docs.github.com/en/graphql/reference/mutations#convertpullrequesttodraft |
 | `mutation-capable` | `github_create_blob` | Create a blob in the repository and return its SHA. |
 | `mutation-capable` | `github_create_branch` | Create a new branch in the given repository from base_branch. |
-| `mutation-capable` | `github_create_commit` | Create a commit pointing to tree_sha with parent parent_sha. |
+| `mutation-capable` | `github_create_commit` | Create a commit pointing to tree_sha with one or more parents. |
 | `mutation-capable` | `github_create_file` | Create a UTF-8 text file through GitHub's contents API. Returns only the resulting commit SHA, not GitHub's full content/commit payload. Docs: https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-o |
 | `mutation-capable` | `github_create_issue` | Create a GitHub issue. Returns a normalized issue snapshot, not GitHub's raw REST payload. Docs: https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue |
 | `mutation-capable` | `github_create_pull_request` | Open a pull request in the repository. Returns the connector's normalized PR snapshot, not the full REST response payload. Docs: https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#create-a-pull-request |

@@ -1,8 +1,8 @@
 # Summary Consistency
 
-- Generated: `2026-06-01T16:15:22Z`
+- Generated: `2026-06-06T12:44:15Z`
 - OK: `True`
-- Surface report: `2026-06-01T16:15:21Z`
+- Surface report: `2026-06-06T12:44:14Z`
 - Official paths: `172`
 - Offline smoke results: `36`
 

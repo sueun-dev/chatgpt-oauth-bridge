@@ -1,6 +1,6 @@
 # OpenAI Bridge Route Policy
 
-- Generated: `2026-06-01T16:15:22Z`
+- Generated: `2026-06-06T12:44:14Z`
 - Local bridge policy complete: `True`
 - Hosted OpenAI OAuth complete: `False`
 - Bottom line: Local bridge policy covers every documented path, but strict hosted OpenAI OAuth is verified only for 5 paths; local compatibility is not hosted Platform OAuth.

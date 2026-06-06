@@ -1,6 +1,6 @@
 # OAuth Bridge Goal Audit
 
-- Generated: `2026-06-01T16:15:22Z`
+- Generated: `2026-06-06T12:44:15Z`
 - Verdict: `not_complete`
 - Goal complete: `False`
 - Hosted OpenAI OAuth complete: `False`
@@ -28,9 +28,9 @@
 | `met` | Include OpenAI-provided API paths that actually accept this OAuth token | `direct_official_oauth_verified=5; matrix_results=53` | Keep these paths classified separately from local compatibility and Platform fallback. |
 | `met` | Include safe local or ChatGPT-backend workarounds where direct OAuth is unavailable | `local_compat_or_chatgpt_backend_bridge=167; offline_results=36; offline_all_pass=True` | Use local compatibility only where the router smoke and docs name the boundary clearly. |
 | `met` | Expose API/Admin-key boundaries without pretending OAuth can bypass them | `api_or_admin_key_boundary=0; boundary_report_missing=False` | Use bridge.py boundaries and optional Platform fallback for these paths. |
-| `met` | Make the bridge easy for users to configure, check, and migrate | `base_url=http://127.0.0.1:8787/v1; placeholder_api_key=oauth-local-proxy; migration_report_missing=False` | Use bridge.py quickstart, config, check, migrate, status, coverage, publish-check, and verdict as the user-facing entrypoints. |
-| `not_met` | Make GitHub and clone-user publish state explicit before public use | `publish_ready=False; local_tree_ready=True; changed_total=20; untracked_source=0; head_matches_upstream=False` | Run python bridge.py publish-check --strict, then commit and push before claiming GitHub or clone users have the latest bridge. |
-| `not_met` | Verify live HTTP/SDK behavior in the current environment | `codex_model_discovery_ok=False; localhost_bind_ok=False; proxy_results=74; sdk_results=65` | Run python bridge.py live-check from a shell with network access and localhost bind permission before launch claims. |
+| `not_met` | Make the bridge easy for users to configure, check, and migrate | `base_url=http://127.0.0.1:8787/v1; placeholder_api_key=oauth-local-proxy; migration_report_missing=True` | Use bridge.py quickstart, config, check, migrate, status, coverage, publish-check, and verdict as the user-facing entrypoints. |
+| `not_met` | Make GitHub and clone-user publish state explicit before public use | `publish_ready=False; local_tree_ready=True; changed_total=22; untracked_source=0; head_matches_upstream=True` | Run python bridge.py publish-check --strict, then commit and push before claiming GitHub or clone users have the latest bridge. |
+| `not_met` | Verify live HTTP/SDK behavior in the current environment | `codex_model_discovery_ok=True; localhost_bind_ok=True; proxy_results=108; sdk_results=90` | Run python bridge.py live-check from a shell with network access and localhost bind permission before launch claims. |
 
 ## Ready Product Groups
 
@@ -92,5 +92,6 @@
 
 ## Next Actions
 
+- Use bridge.py quickstart, config, check, migrate, status, coverage, publish-check, and verdict as the user-facing entrypoints.
 - Run python bridge.py publish-check --strict, then commit and push before claiming GitHub or clone users have the latest bridge.
 - Run python bridge.py live-check from a shell with network access and localhost bind permission before launch claims.

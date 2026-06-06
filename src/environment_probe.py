@@ -164,11 +164,15 @@ def write_reports(payload: Dict[str, Any]) -> None:
         f"- Live environment OK: `{diagnostics.get('live_environment_ok')}`",
         "",
         "## Next Actions",
-        "",
     ])
-    for action in diagnostics.get("next_actions") or []:
-        lines.append(f"- {action}")
-    lines.append("")
+    actions = diagnostics.get("next_actions") or []
+    if actions:
+        lines.append("")
+        for action in actions:
+            lines.append(f"- {action}")
+    else:
+        lines.append("")
+        lines.append("- None.")
     (REPORTS / "environment_latest.md").write_text("\n".join(lines))
 
 

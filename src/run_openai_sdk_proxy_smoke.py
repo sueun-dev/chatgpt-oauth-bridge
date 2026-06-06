@@ -66,6 +66,25 @@ class OpenAISDKProxySmoke:
         }) + "\n")
         return path
 
+    def _raw_get(self, client: OpenAI, path: str) -> Dict[str, Any]:
+        return self._as_dict(client.get(path, cast_to=Dict[str, Any]))
+
+    def _raw_post(self, client: OpenAI, path: str, body: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        return self._as_dict(client.post(path, cast_to=Dict[str, Any], body=body or {}))
+
+    def _raw_delete(self, client: OpenAI, path: str) -> Dict[str, Any]:
+        return self._as_dict(client.delete(path, cast_to=Dict[str, Any]))
+
+    def _as_dict(self, value: Any) -> Dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        model_dump = getattr(value, "model_dump", None)
+        if callable(model_dump):
+            dumped = model_dump()
+            if isinstance(dumped, dict):
+                return dumped
+        return dict(value)
+
     def run(self, sdk_base_url: str, *, write: bool = True) -> int:
         client = OpenAI(api_key="oauth-local-proxy", base_url=sdk_base_url, timeout=120)
 
@@ -1095,44 +1114,44 @@ class OpenAISDKProxySmoke:
         }
 
     def _evals_create_row(self, client: OpenAI) -> Dict[str, Any]:
-        response = client.evals.create(
-            name="sdk-local-eval",
-            data_source_config={"type": "custom", "item_schema": {}},
-            testing_criteria=[{
+        response = self._raw_post(client, "/evals", {
+            "name": "sdk-local-eval",
+            "data_source_config": {"type": "custom", "item_schema": {}},
+            "testing_criteria": [{
                 "type": "string_check",
                 "name": "contains_expected",
                 "input": "{{ output }}",
                 "operation": "like",
                 "reference": "sdk eval ok",
             }],
-            metadata={
+            "metadata": {
                 "prompt": "Reply exactly: sdk eval ok",
                 "expected_substring": "sdk eval ok",
             },
-        )
-        return {"object": response.object, "id": response.id, "resource_name": response.name}
+        })
+        return {"object": response.get("object"), "id": response.get("id"), "resource_name": response.get("name")}
 
     def _evals_list_row(self, client: OpenAI) -> Dict[str, Any]:
-        response = client.evals.list()
-        return {"object": response.object, "data_count": len(response.data)}
+        response = self._raw_get(client, "/evals")
+        data = response.get("data") if isinstance(response.get("data"), list) else []
+        return {"object": response.get("object"), "data_count": len(data)}
 
     def _evals_retrieve_row(self, client: OpenAI, eval_id: str) -> Dict[str, Any]:
-        response = client.evals.retrieve(eval_id)
-        return {"object": response.object, "id": response.id, "resource_name": response.name}
+        response = self._raw_get(client, f"/evals/{eval_id}")
+        return {"object": response.get("object"), "id": response.get("id"), "resource_name": response.get("name")}
 
     def _evals_update_row(self, client: OpenAI, eval_id: str) -> Dict[str, Any]:
-        response = client.evals.update(eval_id, name="sdk-local-eval-updated")
-        return {"object": response.object, "id": response.id, "resource_name": response.name}
+        response = self._raw_post(client, f"/evals/{eval_id}", {"name": "sdk-local-eval-updated"})
+        return {"object": response.get("object"), "id": response.get("id"), "resource_name": response.get("name")}
 
     def _evals_delete_row(self, client: OpenAI, eval_id: str) -> Dict[str, Any]:
-        response = client.evals.delete(eval_id)
-        return {"object": response.object, "id": response.eval_id, "deleted": bool(response.deleted)}
+        response = self._raw_delete(client, f"/evals/{eval_id}")
+        return {"object": response.get("object"), "id": response.get("eval_id"), "deleted": bool(response.get("deleted"))}
 
     def _eval_runs_create_row(self, client: OpenAI, eval_id: str) -> Dict[str, Any]:
-        response = client.evals.runs.create(
-            eval_id,
-            name="sdk-local-eval-run",
-            data_source={
+        response = self._raw_post(client, f"/evals/{eval_id}/runs", {
+            "name": "sdk-local-eval-run",
+            "data_source": {
                 "type": "jsonl",
                 "source": {
                     "type": "file_content",
@@ -1144,57 +1163,60 @@ class OpenAISDKProxySmoke:
                     }],
                 },
             },
-        )
+        })
+        result_counts = response.get("result_counts") if isinstance(response.get("result_counts"), dict) else {}
         return {
-            "object": response.object,
-            "id": response.id,
-            "eval_id": response.eval_id,
-            "resource_status": response.status,
-            "result_counts_total": response.result_counts.total,
+            "object": response.get("object"),
+            "id": response.get("id"),
+            "eval_id": response.get("eval_id"),
+            "resource_status": response.get("status"),
+            "result_counts_total": result_counts.get("total"),
         }
 
     def _eval_runs_list_row(self, client: OpenAI, eval_id: str) -> Dict[str, Any]:
-        response = client.evals.runs.list(eval_id)
-        return {"object": response.object, "data_count": len(response.data)}
+        response = self._raw_get(client, f"/evals/{eval_id}/runs")
+        data = response.get("data") if isinstance(response.get("data"), list) else []
+        return {"object": response.get("object"), "data_count": len(data)}
 
     def _eval_runs_retrieve_row(self, client: OpenAI, eval_id: str, run_id: str) -> Dict[str, Any]:
-        response = client.evals.runs.retrieve(run_id, eval_id=eval_id)
+        response = self._raw_get(client, f"/evals/{eval_id}/runs/{run_id}")
         return {
-            "object": response.object,
-            "id": response.id,
-            "eval_id": response.eval_id,
-            "resource_status": response.status,
+            "object": response.get("object"),
+            "id": response.get("id"),
+            "eval_id": response.get("eval_id"),
+            "resource_status": response.get("status"),
         }
 
     def _eval_runs_cancel_row(self, client: OpenAI, eval_id: str, run_id: str) -> Dict[str, Any]:
-        response = client.evals.runs.cancel(run_id, eval_id=eval_id)
+        response = self._raw_post(client, f"/evals/{eval_id}/runs/{run_id}/cancel")
         return {
-            "object": response.object,
-            "id": response.id,
-            "eval_id": response.eval_id,
-            "resource_status": response.status,
+            "object": response.get("object"),
+            "id": response.get("id"),
+            "eval_id": response.get("eval_id"),
+            "resource_status": response.get("status"),
         }
 
     def _eval_runs_delete_row(self, client: OpenAI, eval_id: str, run_id: str) -> Dict[str, Any]:
-        response = client.evals.runs.delete(run_id, eval_id=eval_id)
-        return {"object": response.object, "id": response.run_id, "deleted": bool(response.deleted)}
+        response = self._raw_delete(client, f"/evals/{eval_id}/runs/{run_id}")
+        return {"object": response.get("object"), "id": response.get("run_id"), "deleted": bool(response.get("deleted"))}
 
     def _eval_output_items_list_row(self, client: OpenAI, eval_id: str, run_id: str) -> Dict[str, Any]:
-        response = client.evals.runs.output_items.list(run_id, eval_id=eval_id)
+        response = self._raw_get(client, f"/evals/{eval_id}/runs/{run_id}/output_items")
+        data = response.get("data") if isinstance(response.get("data"), list) else []
         return {
-            "object": response.object,
-            "data_count": len(response.data),
-            "first_id": response.data[0].id if response.data else None,
+            "object": response.get("object"),
+            "data_count": len(data),
+            "first_id": data[0].get("id") if data else None,
         }
 
     def _eval_output_items_retrieve_row(self, client: OpenAI, eval_id: str, run_id: str, output_item_id: str) -> Dict[str, Any]:
-        response = client.evals.runs.output_items.retrieve(output_item_id, eval_id=eval_id, run_id=run_id)
+        response = self._raw_get(client, f"/evals/{eval_id}/runs/{run_id}/output_items/{output_item_id}")
         return {
-            "object": response.object,
-            "id": response.id,
-            "eval_id": response.eval_id,
-            "run_id": response.run_id,
-            "resource_status": response.status,
+            "object": response.get("object"),
+            "id": response.get("id"),
+            "eval_id": response.get("eval_id"),
+            "run_id": response.get("run_id"),
+            "resource_status": response.get("status"),
         }
 
     def _files_create_row(self, client: OpenAI) -> Dict[str, Any]:

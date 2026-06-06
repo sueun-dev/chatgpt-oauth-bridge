@@ -7,7 +7,7 @@ import os
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import httpx
 import websockets
@@ -31,6 +31,8 @@ CODEX_REASONING = {"effort": "xhigh"}
 IMAGE_GENERATION_QUALITY = "high"
 DEFAULT_REALTIME_MODEL = "gpt-realtime"
 RECOMMENDED_REALTIME_MODEL = "gpt-realtime-2"
+DEFAULT_REALTIME_VOICE = "marin"
+DEFAULT_REALTIME_AUDIO_RATE = 24000
 DEFAULT_REALTIME_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
 RECOMMENDED_REALTIME_TRANSCRIPTION_MODEL = "gpt-realtime-whisper"
 DEFAULT_REALTIME_TRANSLATION_MODEL = "gpt-realtime-translate"
@@ -53,7 +55,7 @@ class OpenAIOAuthAccess:
         self.model_ids = list(self.discovered_model_ids)
         self.text_model = choose_text_model(self.discovered_model_ids)
         self.image_host_model = choose_image_host_model(self.discovered_model_ids)
-        self.realtime_model = os.environ.get("OAUTH_BRIDGE_REALTIME_MODEL") or DEFAULT_REALTIME_MODEL
+        self.realtime_model = os.environ.get("OAUTH_BRIDGE_REALTIME_MODEL") or RECOMMENDED_REALTIME_MODEL
         self.realtime_transcription_model = (
             os.environ.get("OAUTH_BRIDGE_REALTIME_TRANSCRIPTION_MODEL")
             or DEFAULT_REALTIME_TRANSCRIPTION_MODEL
@@ -494,20 +496,61 @@ class OpenAIOAuthAccess:
         session_payload = dict(session or {})
         session_payload.setdefault("type", "realtime")
         session_payload.setdefault("model", self.realtime_model)
+        if session_payload.get("type") == "realtime":
+            session_payload = self._realtime_audio_session(
+                model=str(session_payload.get("model") or self.realtime_model),
+                session=session_payload,
+            )
         body: Dict[str, Any] = {"session": session_payload}
         if expires_after:
             body["expires_after"] = expires_after
         return self.official_post("/v1/realtime/client_secrets", json_body=body)
 
-    def realtime_client_secret(self, *, model: Optional[str] = None) -> str:
-        response = self.realtime_client_secret_payload(session={
-            "type": "realtime",
-            "model": model or self.realtime_model,
-        })
+    def realtime_client_secret(self, *, model: Optional[str] = None, voice: Optional[str] = None) -> str:
+        response = self.realtime_client_secret_payload(session=self._realtime_audio_session(
+            model=model or self.realtime_model,
+            voice=voice,
+        ))
+        status = int(response.get("_http_status", 200) or 200)
+        if status >= 400:
+            message = response.get("_error_prefix") or response.get("error") or response
+            raise RuntimeError(f"Realtime client secret failed with HTTP {status}: {sanitize_response_text(str(message), limit=800)}")
         value = response.get("value")
         if not isinstance(value, str) or not value:
             raise RuntimeError("Realtime client secret response did not contain value.")
         return value
+
+    def _realtime_audio_session(
+        self,
+        *,
+        model: str,
+        session: Optional[Dict[str, Any]] = None,
+        instructions: Optional[str] = None,
+        voice: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        payload = dict(session or {})
+        payload["type"] = "realtime"
+        payload["model"] = model
+        if instructions:
+            payload["instructions"] = instructions
+        payload.setdefault("output_modalities", ["audio"])
+        audio = dict(payload.get("audio") if isinstance(payload.get("audio"), dict) else {})
+        output = dict(audio.get("output") if isinstance(audio.get("output"), dict) else {})
+        audio_format = dict(output.get("format") if isinstance(output.get("format"), dict) else {})
+        audio_format.setdefault("type", "audio/pcm")
+        audio_format.setdefault("rate", DEFAULT_REALTIME_AUDIO_RATE)
+        output["format"] = audio_format
+        output.setdefault("voice", voice or DEFAULT_REALTIME_VOICE)
+        audio["output"] = output
+        payload["audio"] = audio
+        return payload
+
+    def _realtime_model_candidates(self, model: Optional[str] = None) -> list[str]:
+        candidates: list[str] = []
+        for item in (model, self.realtime_model, RECOMMENDED_REALTIME_MODEL, DEFAULT_REALTIME_MODEL):
+            if isinstance(item, str) and item and item not in candidates:
+                candidates.append(item)
+        return candidates
 
     def realtime_transcription_session(
         self,
@@ -601,26 +644,51 @@ class OpenAIOAuthAccess:
             "_error_prefix": sanitize_response_text(response.text) if response.status_code >= 400 else None,
         }
 
-    def realtime_say_to_pcm(self, text: str, output_path: Path | str) -> Path:
-        return asyncio.run(self._realtime_say_to_pcm_async(text, Path(output_path)))
+    def realtime_say_to_pcm(self, text: str, output_path: Path | str, *, voice: Optional[str] = None) -> Path:
+        return asyncio.run(self._realtime_say_to_pcm_async(text, Path(output_path), voice=voice))
 
-    async def _realtime_say_to_pcm_async(self, text: str, output_path: Path) -> Path:
-        secret = self.realtime_client_secret()
-        uri = f"wss://api.openai.com/v1/realtime?model={self.realtime_model}"
+    async def _realtime_say_to_pcm_async(self, text: str, output_path: Path, *, voice: Optional[str] = None) -> Path:
+        errors: list[str] = []
+        for model in self._realtime_model_candidates():
+            try:
+                return await self._realtime_say_to_pcm_for_model_async(text, output_path, model=model, voice=voice)
+            except Exception as exc:
+                errors.append(f"{model}: {type(exc).__name__}: {sanitize_response_text(str(exc), limit=500)}")
+        raise RuntimeError("Realtime audio synthesis failed for all model candidates: " + " | ".join(errors))
+
+    async def _realtime_say_to_pcm_for_model_async(
+        self,
+        text: str,
+        output_path: Path,
+        *,
+        model: str,
+        voice: Optional[str] = None,
+    ) -> Path:
+        instructions = f"Say exactly: {text}"
+        secret = self.realtime_client_secret(model=model, voice=voice)
+        session = self._realtime_audio_session(model=model, instructions=instructions, voice=voice)
+        uri = f"wss://api.openai.com/v1/realtime?model={quote(model)}"
         audio_chunks: list[bytes] = []
         async with websockets.connect(
             uri,
-            additional_headers={"Authorization": f"Bearer {secret}"},
+            additional_headers={
+                "Authorization": f"Bearer {secret}",
+            },
             open_timeout=15,
             max_size=8 * 1024 * 1024,
         ) as ws:
             await ws.send(json.dumps({
+                "type": "session.update",
+                "session": session,
+            }, separators=(",", ":")))
+            await ws.send(json.dumps({
                 "type": "response.create",
                 "response": {
                     "output_modalities": ["audio"],
-                    "instructions": f"Say exactly: {text}",
+                    "instructions": instructions,
+                    "audio": session["audio"],
                 },
-            }))
+            }, separators=(",", ":")))
             deadline = time.time() + 35
             while time.time() < deadline:
                 message = await asyncio.wait_for(ws.recv(), timeout=max(1.0, deadline - time.time()))
@@ -629,13 +697,22 @@ class OpenAIOAuthAccess:
                 if event_type == "error":
                     raise RuntimeError(sanitize_response_text(json.dumps(event.get("error", event)), limit=800))
                 delta = event.get("delta")
-                if isinstance(delta, str) and "audio" in event_type:
+                if isinstance(delta, str) and event_type in {
+                    "response.audio.delta",
+                    "response.output_audio.delta",
+                    "response.audio_transcript.delta",
+                    "response.output_audio_transcript.delta",
+                }:
+                    if "transcript" in event_type:
+                        continue
                     try:
                         audio_chunks.append(base64.b64decode(delta))
                     except Exception:
                         pass
                 if event_type in {"response.done", "response.completed"}:
                     break
+        if not audio_chunks:
+            raise RuntimeError("Realtime audio completed without audio delta chunks.")
         output_path.write_bytes(b"".join(audio_chunks))
         return output_path
 
