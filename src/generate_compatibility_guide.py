@@ -7,6 +7,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
+from surface_audit import load_surface_payload
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
@@ -54,16 +56,7 @@ CATEGORY_ORDER = [
 
 
 def load_surface() -> Dict[str, Any]:
-    path = REPORTS / "openai_surface_audit_latest.json"
-    if not path.exists():
-        raise FileNotFoundError(f"Missing surface audit report: {path}")
-    payload = json.loads(path.read_text())
-    if not isinstance(payload, dict):
-        raise ValueError(f"Invalid surface audit report: {path}")
-    rows = payload.get("rows")
-    if not isinstance(rows, list):
-        raise ValueError(f"Surface audit report has no rows list: {path}")
-    return payload
+    return load_surface_payload()
 
 
 def build_report() -> Dict[str, Any]:

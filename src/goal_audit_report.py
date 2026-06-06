@@ -10,6 +10,7 @@ from generate_coverage_map import build_report as build_coverage_map_report
 from generate_client_config import build_report as build_client_config_report
 from publish_check import build_report as build_publish_check_report
 from readiness_report import build_report as build_readiness_report
+from surface_audit import load_surface_payload
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -72,7 +73,7 @@ def build_report() -> Dict[str, Any]:
     coverage = build_coverage_map_report()
     client_config = build_client_config_report()
     publish = build_publish_check_report()
-    surface = load_json("openai_surface_audit_latest.json")
+    surface = load_surface_payload()
     offline = load_json("router_offline_smoke_latest.json")
     environment = load_json("environment_latest.json")
     proxy = load_json("proxy_smoke_latest.json")
