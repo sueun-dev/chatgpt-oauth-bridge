@@ -1,6 +1,6 @@
 # Platform Fallback Status
 
-- Generated: `2026-06-01T16:15:22Z`
+- Generated: `2026-06-06T12:44:14Z`
 - Enabled: `False`
 - Mode: `boundary`
 - Base URL: `https://api.openai.com/v1`

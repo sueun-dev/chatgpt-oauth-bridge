@@ -1,12 +1,12 @@
 # OAuth Bridge Doctor
 
-- Generated: `2026-06-01T17:48:39Z`
+- Generated: `2026-06-06T13:20:39Z`
 - Package health OK: `True`
 - Local router OK: `True`
-- Live environment OK: `False`
-- Full goal complete: `False`
+- Live environment OK: `True`
+- Full goal complete: `True`
 - Platform fallback enabled: `False`
-- Bottom line: Package health checks pass, but the current environment cannot prove the full goal.
+- Bottom line: Package health checks pass and the full goal is complete.
 
 ## Coverage
 
@@ -21,8 +21,8 @@
 
 | Check | OK | Error |
 |---|---|---|
-| Codex model discovery | `False` | `[Errno 8] nodename nor servname provided, or not known` |
-| Localhost bind | `False` | `[Errno 1] Operation not permitted` |
+| Codex model discovery | `True` | `None` |
+| Localhost bind | `True` | `None` |
 
 ## Platform Fallback
 
@@ -46,14 +46,6 @@
 | `pass` | `readiness_report` | 0 |
 | `pass` | `git_diff_check` | 0 |
 
-## Warnings
-
-- Full goal is not complete in this environment.
-- Current environment cannot reach Codex model discovery.
-- Current environment cannot bind localhost for live HTTP/SDK smoke.
-
 ## Next Actions
 
-- Run python bridge.py live-check from a normal local shell that can bind localhost.
-- Run from an environment with network access before relying on model-backed calls.
 - Use python bridge.py migrate path/to/app --fail-on-boundary before switching an app to the bridge.

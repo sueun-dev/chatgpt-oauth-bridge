@@ -1,6 +1,6 @@
 # OpenAI Usage Compatibility Check
 
-- Generated: `2026-06-01T16:15:23Z`
+- Generated: `2026-06-06T12:44:15Z`
 - Inputs: `/v1/embeddings, /v1/assistants, /v1/videos/edits, /v1/fine_tuning/jobs/ftjob_123/cancel`
 - Findings: `4`
 - Usable without Platform key: `4`

@@ -1,6 +1,6 @@
 # OAuth Bridge Quickstart
 
-- Generated: `2026-06-01T16:15:22Z`
+- Generated: `2026-06-06T12:44:14Z`
 - Goal complete: `False`
 - Bottom line: Not complete: the documented path surface is covered by direct OAuth or explicit local compatibility, but only 5 paths are direct hosted OAuth and this environment cannot prove live HTTP/SDK behavior.
 - Base URL: `http://127.0.0.1:8787/v1`
@@ -41,7 +41,7 @@
 | Local tree ready | `True` |
 | Branch | `main` |
 | Upstream | `origin/main` |
-| Head matches upstream | `False` |
+| Head matches upstream | `True` |
 
 ## First Run
 

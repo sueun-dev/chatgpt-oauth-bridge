@@ -1,8 +1,8 @@
 # OAuth Bridge Status
 
-- Generated: `2026-06-01T17:49:54Z`
-- Goal complete: `False`
-- Bottom line: Not complete: every documented path is mapped to direct OAuth or explicit local compatibility, but only 5 paths are direct hosted OAuth and this environment cannot prove live Codex network access and localhost SDK smoke.
+- Generated: `2026-06-06T13:20:39Z`
+- Goal complete: `True`
+- Bottom line: Complete under the current evidence set.
 - Base URL: `http://127.0.0.1:8787/v1`
 - Placeholder API key: `oauth-local-proxy`
 
@@ -17,13 +17,13 @@
 
 | Check | Value |
 |---|---|
-| Codex model discovery | `False` |
-| Codex model discovery error | `ConnectError` |
-| Localhost bind | `False` |
-| Localhost bind error | `PermissionError` |
-| DNS/network blocked | `True` |
-| Localhost socket denied | `True` |
-| Environment report time | `2026-06-01T17:48:37Z` |
+| Codex model discovery | `True` |
+| Codex model discovery error | `None` |
+| Localhost bind | `True` |
+| Localhost bind error | `None` |
+| DNS/network blocked | `False` |
+| Localhost socket denied | `False` |
+| Environment report time | `2026-06-06T13:20:37Z` |
 
 ## Platform Fallback
 
@@ -39,10 +39,10 @@
 
 | Report | Results | All Pass | Finished |
 |---|---:|---|---|
-| `offline` | 36 | `True` | `2026-06-01T17:48:38Z` |
-| `http_proxy` | 74 | `True` | `2026-05-29T23:37:40Z` |
-| `openai_python_sdk` | 65 | `True` | `2026-05-29T23:39:02Z` |
-| `oauth_matrix` | 53 | `None` | `2026-05-29T21:55:56Z` |
+| `offline` | 36 | `True` | `2026-06-06T13:20:38Z` |
+| `http_proxy` | 108 | `True` | `2026-06-06T13:18:50Z` |
+| `openai_python_sdk` | 90 | `True` | `2026-06-06T13:20:36Z` |
+| `oauth_matrix` | 53 | `None` | `2026-06-06T13:12:09Z` |
 
 ## Commands
 
@@ -68,8 +68,7 @@
 
 ## Next Actions
 
-- Run live HTTP/SDK smoke from a shell that can bind localhost.
-- Run from an environment with network access before relying on live model-backed calls.
+- Run python bridge.py publish-check before claiming GitHub or clone users have the latest bridge.
 - Use python bridge.py quickstart for the first-run bundle: env, CI gate, route policy, and full-goal verdict.
 - Use python bridge.py live-check from a normal local shell for the launch gate: environment, HTTP proxy smoke, SDK smoke, readiness, and strict doctor.
 - Use python bridge.py migrate path/to/your/app --fail-on-boundary for a paste-ready migration plan.
@@ -84,5 +83,25 @@
 
 ## Git
 
-- Branch: `## main...origin/main [ahead 1]`
-- Changed files: `0`
+- Branch: `## main...origin/main`
+- Changed files: `34`
+- ` M reports/boundary_playbook_latest.md`
+- ` M reports/client_config_latest.md`
+- ` M reports/codex_apps_tools_latest.md`
+- ` M reports/compatibility_guide_latest.md`
+- ` M reports/coverage_map_latest.md`
+- ` M reports/deep_oauth_research_latest.md`
+- ` M reports/doctor_latest.md`
+- ` M reports/environment_latest.md`
+- ` M reports/goal_audit_latest.md`
+- ` M reports/latest.md`
+- ` M reports/live_check_latest.md`
+- ` M reports/migration_plan_latest.md`
+- ` M reports/openai_bridge_route_policy.csv`
+- ` M reports/openai_bridge_route_policy.md`
+- ` M reports/openai_sdk_proxy_smoke_latest.md`
+- ` M reports/openai_surface_audit_latest.md`
+- ` M reports/platform_fallback_latest.md`
+- ` M reports/proxy_smoke_latest.md`
+- ` M reports/publish_check_latest.md`
+- ` M reports/quickstart_latest.md`

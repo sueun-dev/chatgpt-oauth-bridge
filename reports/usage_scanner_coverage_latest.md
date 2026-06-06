@@ -1,6 +1,6 @@
 # Usage Scanner Coverage
 
-- Generated: `2026-06-01T16:15:22Z`
+- Generated: `2026-06-06T12:44:15Z`
 - OK: `True`
 - Checked: `64`
 - Official paths: `172`

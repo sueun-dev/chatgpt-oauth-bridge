@@ -1,6 +1,6 @@
 # OAuth Boundary Playbook
 
-- Generated: `2026-06-01T16:15:22Z`
+- Generated: `2026-06-06T12:44:14Z`
 - Boundary map complete: `True`
 - Hosted OpenAI OAuth complete: `False`
 - Bottom line: No blocked path remains in the local bridge map, but hosted OpenAI OAuth is directly verified for 5 paths; 167 paths are local or ChatGPT-backend compatibility.
@@ -9,7 +9,6 @@
 - Direct hosted OAuth paths: `5`
 - Local bridge paths: `167`
 - Blocked or unproven paths: `0`
-- Source warning: Could not refresh the OpenAPI source in this environment; reused path list from reports/openai_surface_audit_latest.json generated at 2026-06-01T16:11:23Z. Fetch error: RuntimeError: Could not fetch or parse OpenAI OpenAPI paths. https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml: ConnectError: [Errno 8] nodename nor servname provided, or not known; https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml: ConnectError: [Errno 8] nodename nor servname provided, or not known
 
 ## Safe Modes
 

@@ -127,6 +127,13 @@ def classify_path(path: str, statuses: dict[str, str], local_statuses: dict[str,
             status_note(statuses, "official_api_realtime_translation_client_secret_with_oauth"),
         )
     if path == "/realtime/calls":
+        status = statuses.get("official_api_realtime_calls_with_oauth")
+        if status != "pass":
+            return record(
+                "not_available_current_deployment",
+                "Official Realtime WebRTC call creation is documented, but the current Codex/ChatGPT OAuth probe did not produce a usable hosted call. Use Platform credentials for this route.",
+                status_note(statuses, "official_api_realtime_calls_with_oauth"),
+            )
         return record(
             "direct_official_oauth_verified",
             "Official Realtime WebRTC call creation accepted a realistic multipart SDP offer.",

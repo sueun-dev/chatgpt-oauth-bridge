@@ -14,6 +14,7 @@ import traceback
 import wave
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
+from urllib.parse import quote
 
 import httpx
 import websockets
@@ -38,6 +39,9 @@ REPORTS = ROOT / "reports"
 ARTIFACTS = ROOT / "artifacts"
 CODEX_REASONING = {"effort": "xhigh"}
 IMAGE_GENERATION_QUALITY = "high"
+REALTIME_MODEL = os.environ.get("OAUTH_BRIDGE_REALTIME_MODEL") or "gpt-realtime-2"
+REALTIME_AUDIO_RATE = 24000
+REALTIME_VOICE = "marin"
 
 
 def display_path(path: Path) -> str:
@@ -401,6 +405,8 @@ class Matrix:
             return "auth_accepted_request_invalid"
         if response.status_code == 404:
             return "resource_required" if response.text.strip() else "expected_blocked"
+        if response.status_code >= 500:
+            return "not_available"
         return "fail"
 
     def _official_api_post(
@@ -541,7 +547,14 @@ class Matrix:
             response = client.post("https://api.openai.com/v1/realtime/client_secrets", headers=headers, json={
                 "session": {
                     "type": "realtime",
-                    "model": "gpt-realtime",
+                    "model": REALTIME_MODEL,
+                    "output_modalities": ["audio"],
+                    "audio": {
+                        "output": {
+                            "format": {"type": "audio/pcm", "rate": REALTIME_AUDIO_RATE},
+                            "voice": REALTIME_VOICE,
+                        },
+                    },
                 },
             })
         if response.status_code != 200:
@@ -554,10 +567,22 @@ class Matrix:
 
     async def _realtime_audio_probe_async(self) -> Dict[str, Any]:
         secret = self._create_realtime_client_secret()
-        uri = "wss://api.openai.com/v1/realtime?model=gpt-realtime"
+        uri = f"wss://api.openai.com/v1/realtime?model={quote(REALTIME_MODEL)}"
         audio_chunks: list[bytes] = []
         transcript_parts: list[str] = []
         event_types: list[str] = []
+        session = {
+            "type": "realtime",
+            "model": REALTIME_MODEL,
+            "instructions": "Say exactly: oauth realtime ok.",
+            "output_modalities": ["audio"],
+            "audio": {
+                "output": {
+                    "format": {"type": "audio/pcm", "rate": REALTIME_AUDIO_RATE},
+                    "voice": REALTIME_VOICE,
+                },
+            },
+        }
         async with websockets.connect(
             uri,
             additional_headers={
@@ -566,13 +591,15 @@ class Matrix:
             open_timeout=15,
             max_size=8 * 1024 * 1024,
         ) as ws:
+            await ws.send(json.dumps({"type": "session.update", "session": session}, separators=(",", ":")))
             await ws.send(json.dumps({
                 "type": "response.create",
                 "response": {
                     "output_modalities": ["audio"],
                     "instructions": "Say exactly: oauth realtime ok.",
+                    "audio": session["audio"],
                 },
-            }))
+            }, separators=(",", ":")))
             deadline = time.time() + 35
             while time.time() < deadline:
                 message = await asyncio.wait_for(ws.recv(), timeout=max(1.0, deadline - time.time()))
@@ -583,7 +610,7 @@ class Matrix:
                 if event_type == "error":
                     raise RuntimeError(sanitize_response_text(json.dumps(event.get("error", event)), limit=800))
                 delta = event.get("delta")
-                if isinstance(delta, str) and "audio" in event_type:
+                if isinstance(delta, str) and event_type in {"response.audio.delta", "response.output_audio.delta"}:
                     try:
                         audio_chunks.append(base64.b64decode(delta))
                     except Exception:
@@ -600,17 +627,27 @@ class Matrix:
         if transcript_parts:
             transcript_path.write_text("".join(transcript_parts))
         return {
-            "websocket_url": "wss://api.openai.com/v1/realtime?model=gpt-realtime",
+            "websocket_url": f"wss://api.openai.com/v1/realtime?model={REALTIME_MODEL}",
             "audio_path": display_path(audio_path) if audio else None,
             "audio_bytes": len(audio),
             "transcript_path": display_path(transcript_path) if transcript_parts else None,
             "transcript": "".join(transcript_parts)[:200],
             "event_types": event_types[:40],
+            "model": REALTIME_MODEL,
             "_status": "pass" if len(audio) > 100 else "fail",
         }
 
     def test_official_realtime_audio_websocket(self) -> Dict[str, Any]:
-        return asyncio.run(self._realtime_audio_probe_async())
+        try:
+            return asyncio.run(self._realtime_audio_probe_async())
+        except Exception as exc:
+            return {
+                "websocket_url": f"wss://api.openai.com/v1/realtime?model={REALTIME_MODEL}",
+                "exception_type": type(exc).__name__,
+                "error": sanitize_response_text(str(exc), limit=800),
+                "auth": "Codex OAuth realtime client secret, redacted",
+                "_status": "not_available",
+            }
 
     def test_official_realtime_transcription_session(self) -> Dict[str, Any]:
         return self._official_api_post("/v1/realtime/client_secrets", json_body={
@@ -880,7 +917,7 @@ class Matrix:
         session = json.dumps({
             "tool_choice": "auto",
             "type": "realtime",
-            "model": "gpt-realtime-1.5",
+            "model": REALTIME_MODEL,
             "instructions": "oauth legal probe",
             "output_modalities": ["audio"],
             "audio": {

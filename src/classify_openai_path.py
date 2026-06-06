@@ -33,13 +33,46 @@ def normalize_path(value: str) -> str:
 
 def load_rows() -> list[Dict[str, Any]]:
     path = REPORTS / "openai_surface_audit_latest.json"
-    if not path.exists():
-        raise FileNotFoundError(f"Missing surface audit report: {path}")
-    payload = json.loads(path.read_text())
-    rows = payload.get("rows")
-    if not isinstance(rows, list):
-        raise ValueError(f"Invalid surface audit report: {path}")
-    return [row for row in rows if isinstance(row, dict)]
+    if path.exists():
+        payload = json.loads(path.read_text())
+        rows = payload.get("rows")
+        if not isinstance(rows, list):
+            raise ValueError(f"Invalid surface audit report: {path}")
+        return [row for row in rows if isinstance(row, dict)]
+    markdown_path = REPORTS / "openai_surface_audit_latest.md"
+    if markdown_path.exists():
+        rows = load_rows_from_markdown(markdown_path)
+        if rows:
+            return rows
+    raise FileNotFoundError(f"Missing surface audit report: {path}")
+
+
+def strip_code_cell(value: str) -> str:
+    text = value.strip()
+    if text.startswith("`") and text.endswith("`") and len(text) >= 2:
+        return text[1:-1]
+    return text
+
+
+def load_rows_from_markdown(path: Path) -> list[Dict[str, Any]]:
+    rows: list[Dict[str, Any]] = []
+    for line in path.read_text().splitlines():
+        if not line.startswith("| `"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 4:
+            continue
+        api_path = strip_code_cell(cells[0])
+        category = strip_code_cell(cells[1])
+        if not api_path.startswith("/"):
+            continue
+        rows.append({
+            "path": api_path,
+            "category": category,
+            "support": cells[2],
+            "evidence": strip_code_cell(cells[3]),
+        })
+    return rows
 
 
 def template_matches(template: str, wanted: str) -> bool:

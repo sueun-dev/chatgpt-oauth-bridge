@@ -1,6 +1,6 @@
 # OAuth Bridge Migration Plan
 
-- Generated: `2026-06-01T16:15:23Z`
+- Generated: `2026-06-06T12:44:15Z`
 - Decision: `ready_to_try_local_bridge`
 - Bottom line: Ready to try the local OAuth bridge for the detected OpenAI calls. Run live smoke from a normal shell before treating this as production-ready.
 - Inputs: `/v1/embeddings, /v1/assistants, /v1/videos/edits, /v1/fine_tuning/jobs/ftjob_123/cancel`

@@ -1,7 +1,7 @@
 # OAuth Matrix Report
 
-- Started: `2026-05-29T21:53:12Z`
-- Finished: `2026-05-29T21:55:56Z`
+- Started: `2026-06-06T13:29:50Z`
+- Finished: `2026-06-06T13:32:30Z`
 - Runtime source: `codex-cli`
 - Text model: `gpt-5.5`
 - Image host model: `gpt-5.5`
@@ -10,11 +10,11 @@
 |---|---|---|---|
 | `pass` | `token_inventory` | `auth` |  |
 | `pass` | `no_platform_api_key_env` | `auth` |  |
-| `pass` | `codex_models` | `codex-oauth` | model_count=7 |
+| `pass` | `codex_models` | `codex-oauth` | model_count=5 |
 | `pass` | `codex_text_response` | `codex-oauth` | model=gpt-5.5; output_text=oauth text ok |
 | `pass` | `codex_vision_input` | `codex-oauth` | model=gpt-5.5; output_text=Red |
-| `pass` | `codex_image_generation` | `codex-oauth` | path=artifacts/codex_oauth_image.png; bytes=915181; width=1024; height=1024 |
-| `pass` | `codex_drawing_generation` | `codex-oauth` | path=artifacts/codex_oauth_drawing.png; bytes=801640; width=1024; height=1024 |
+| `pass` | `codex_image_generation` | `codex-oauth` | path=artifacts/codex_oauth_image.png; bytes=912851; width=1024; height=1024 |
+| `pass` | `codex_drawing_generation` | `codex-oauth` | path=artifacts/codex_oauth_drawing.png; bytes=765022; width=1024; height=1024 |
 | `expected_blocked` | `codex_audio_speech_route` | `codex-oauth` |  |
 | `expected_blocked` | `official_api_models_list_with_oauth` | `official-api-oauth` | http_status=403; url=https://api.openai.com/v1/models |
 | `expected_blocked` | `official_api_files_list_with_oauth` | `official-api-oauth` | http_status=401; url=https://api.openai.com/v1/files |
@@ -30,12 +30,12 @@
 | `pass` | `official_api_stt_with_oauth` | `official-api-boundary` | http_status=200; url=https://api.openai.com/v1/audio/transcriptions |
 | `expected_blocked` | `official_api_translation_with_oauth` | `official-api-oauth` | http_status=401; url=https://api.openai.com/v1/audio/translations |
 | `pass` | `official_api_realtime_with_oauth` | `official-api-boundary` | http_status=200; url=https://api.openai.com/v1/realtime/client_secrets |
-| `pass` | `official_api_realtime_audio_websocket_with_oauth` | `official-api-oauth` | audio_path=artifacts/realtime_oauth_audio_response.pcm16; audio_bytes=127206; transcript=oauth realtime ok |
+| `not_available` | `official_api_realtime_audio_websocket_with_oauth` | `official-api-oauth` |  |
 | `pass` | `official_api_realtime_transcription_with_oauth` | `official-api-oauth` | http_status=200; url=https://api.openai.com/v1/realtime/client_secrets |
 | `not_available` | `official_api_realtime_sessions_with_oauth` | `official-api-oauth` | http_status=404; url=https://api.openai.com/v1/realtime/sessions |
 | `not_available` | `official_api_realtime_transcription_sessions_legacy_shape_with_oauth` | `official-api-boundary` | http_status=404; url=https://api.openai.com/v1/realtime/transcription_sessions |
 | `pass` | `official_api_realtime_translation_client_secret_with_oauth` | `official-api-oauth` | http_status=200; client_secret_present=True; translation_language=es; url=https://api.openai.com/v1/realtime/translations/client_secrets |
-| `pass` | `official_api_realtime_calls_with_oauth` | `official-api-oauth` | http_status=201; answer_sdp_present=True; answer_sdp_line_count=40; answer_sdp_sha256_prefix=38aebd44f2d65754; location_header_present=True; location_path_shape=/realtime/calls/<call-id>; url=https://api.openai.com/v1/realtime/calls |
+| `not_available` | `official_api_realtime_calls_with_oauth` | `official-api-oauth` | http_status=500; url=https://api.openai.com/v1/realtime/calls |
 | `auth_accepted_request_invalid` | `official_api_realtime_calls_shape_probe_with_oauth` | `official-api-boundary` | http_status=400; url=https://api.openai.com/v1/realtime/calls |
 | `pass` | `official_api_embeddings_with_oauth` | `official-api-boundary` | http_status=200; url=https://api.openai.com/v1/embeddings |
 | `expected_blocked` | `official_api_moderation_with_oauth` | `official-api-boundary` | http_status=401; url=https://api.openai.com/v1/moderations |
@@ -59,8 +59,8 @@
 | `expected_blocked` | `official_api_admin_users_list_with_oauth` | `admin-api-oauth` | http_status=401; url=https://api.openai.com/v1/organization/users?limit=1 |
 | `expected_blocked` | `official_api_admin_keys_list_with_oauth` | `admin-api-oauth` | http_status=401; url=https://api.openai.com/v1/organization/admin_api_keys?limit=1 |
 | `expected_blocked` | `official_api_audit_logs_list_with_oauth` | `admin-api-oauth` | http_status=401; url=https://api.openai.com/v1/organization/audit_logs?limit=1 |
-| `expected_blocked` | `official_api_usage_completions_with_oauth` | `admin-api-oauth` | http_status=401; url=https://api.openai.com/v1/organization/usage/completions?start_time=1780005356&limit=1 |
-| `expected_blocked` | `official_api_costs_with_oauth` | `admin-api-oauth` | http_status=401; url=https://api.openai.com/v1/organization/costs?start_time=1780005356&limit=1 |
+| `expected_blocked` | `official_api_usage_completions_with_oauth` | `admin-api-oauth` | http_status=401; url=https://api.openai.com/v1/organization/usage/completions?start_time=1780666350&limit=1 |
+| `expected_blocked` | `official_api_costs_with_oauth` | `admin-api-oauth` | http_status=401; url=https://api.openai.com/v1/organization/costs?start_time=1780666350&limit=1 |
 
 ## Meaning
 

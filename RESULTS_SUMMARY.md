@@ -2,15 +2,26 @@
 
 Current continuation note:
 
-- Date: `2026-06-01`
-- `python bridge.py info` now stays usable when model discovery cannot reach
-  the Codex backend. In the current restricted environment it reports
-  `model_discovery_error=ConnectError: [Errno 8] nodename nor servname provided,
-  or not known` and falls back to the default local model name for metadata.
-- `python bridge.py smoke --skip-speech` and `python bridge.py sdk-smoke
-  --skip-speech` could not run HTTP coverage here because localhost socket
-  binding is blocked with `PermissionError: [Errno 1] Operation not permitted`.
-  The commands now print that boundary directly instead of a Python stack trace.
+- Date: `2026-06-06`
+- `python3 bridge.py smoke --include-images` passed `108/108` HTTP proxy
+  checks in the latest local run.
+- `python3 bridge.py sdk-smoke --include-images` passed `90/90` OpenAI Python
+  SDK proxy checks in the latest local run.
+- `PYTHONPATH=src python3 src/run_oauth_matrix.py` ran `53` OAuth-only probes:
+  `12` pass, `35` expected_blocked, `4` not_available,
+  `2` auth_accepted_request_invalid, and `0` fail.
+- `python3 bridge.py audit` now classifies the current `172` documented OpenAI
+  API paths as `4` direct official OAuth-verified paths, `167`
+  local/ChatGPT-backend compatibility paths, `0` API-key/Admin-key required,
+  `1` not available, `0` auth-reached-but-not-complete, and `0`
+  resource-bound.
+- Real Realtime voice WebSocket media and real `/v1/realtime/calls` are not
+  verified OAuth-only paths in the current run. `/v1/realtime/calls` returned
+  HTTP `500` on the direct OAuth probe, while the shape probe reached auth and
+  returned HTTP `400` for the test payload.
+- Official hosted `/v1/audio/speech` rejected the OAuth token with HTTP `401`;
+  the local bridge `/v1/audio/speech` route is a compatibility fallback, not
+  official hosted OpenAI TTS.
 - `python bridge.py offline-smoke` passed `36` no-network/no-socket router checks:
   local Responses, Chat, Assistants/Threads run/steps, message delete,
   approximate Responses input-token estimates, local Responses compaction,
@@ -151,10 +162,8 @@ Current continuation note:
 
 Last full run:
 
-- Time: `2026-05-29T21:53:12Z` to `2026-05-29T21:55:56Z`
+- Time: `2026-06-06T13:29:50Z` to `2026-06-06T13:32:30Z`
 - Runtime auth source: `~/.codex/auth.json` Codex CLI OAuth token
-- Hermes `~/.hermes/auth.json` was present but did not contain a usable access
-  token in this run, so the runner used the live Codex CLI OAuth token.
 - No `OPENAI_API_KEY`, `OPENAI_ACCESS_TOKEN`, or `OPENAI_ADMIN_KEY` was present
   in the test process.
 - Full report: `reports/latest.md`
@@ -166,26 +175,27 @@ Last full run:
 
 Status counts:
 
-- `pass`: 14
-- `auth_accepted_request_invalid`: 2
+- `pass`: 12
 - `expected_blocked`: 35
-- `not_available`: 2
+- `not_available`: 4
+- `auth_accepted_request_invalid`: 2
+- `fail`: 0
 
 Official API surface audit:
 
 - `172` documented OpenAI API paths parsed
-- `5` direct official OAuth-verified paths
+- `4` direct official OAuth-verified paths
 - `167` local/ChatGPT-backend compatibility paths
 - `0` API-key/Admin-key required paths
-- `0` not available in this deployment
+- `1` not available
 - `0` auth-reached-but-not-complete paths
 - `0` resource-bound paths
 
 Local proxy smoke:
 
-- Time: `2026-05-29T23:37:40Z`
+- Time: `2026-06-06T13:27:51Z`
 - Full report: `reports/proxy_smoke_latest.md`
-- `pass`: 74
+- `pass`: 108
 - Covered: health, capabilities, browser CORS preflight, models, responses,
   response retrieve/input-items/cancel/delete, chat completions, chat
   retrieve/list/update/messages/delete, clean 400 bad-request handling,
@@ -200,9 +210,9 @@ Local proxy smoke:
 
 OpenAI Python SDK proxy smoke:
 
-- Time: `2026-05-29T23:39:02Z`
+- Time: `2026-06-06T13:29:42Z`
 - Full report: `reports/openai_sdk_proxy_smoke_latest.md`
-- `pass`: 65
+- `pass`: 90
 - Covered through the official `openai` Python package with
   `base_url=http://127.0.0.1:<port>/v1`: models, responses, chat completions,
   response retrieve/input-items/cancel/delete, chat
@@ -289,7 +299,6 @@ OpenAI API endpoints that accepted the Codex OAuth token in this account:
 
 - `POST /v1/audio/transcriptions`
 - `POST /v1/realtime/client_secrets`
-- Realtime WebSocket using the OAuth-created ephemeral key
 - Realtime transcription client secret via `POST /v1/realtime/client_secrets`
   with `session.type="transcription"`. The local proxy exposes
   `/v1/realtime/transcription_sessions` as a compatibility alias over that
@@ -297,13 +306,16 @@ OpenAI API endpoints that accepted the Codex OAuth token in this account:
 - Realtime translation client secret via
   `POST /v1/realtime/translations/client_secrets`.
 - `POST /v1/embeddings`
-- `POST /v1/realtime/calls` accepted OAuth with both `application/sdp` and
-  Codex-style multipart request shapes. With a realistic WebRTC offer, the
-  Codex-style multipart request returned `201`, a `Location` header, and an
-  answer SDP.
 - `POST /v1/conversations` reached route validation, but the current probe
   stopped at `Project ID must be set for the request`; it is not counted as a
   complete OAuth replacement.
+
+Realtime paths that are not verified OAuth-only in the current run:
+
+- Realtime WebSocket media is marked `not_available`.
+- `POST /v1/realtime/calls` returned HTTP `500` on the direct OAuth probe. The
+  shape probe reached auth but returned HTTP `400` for the test payload, so it
+  is not counted as a working Realtime voice/call path.
 
 Source-backed but not auto-run because they mutate real workspace state:
 
@@ -331,8 +343,12 @@ Source-backed but not OAuth:
 
 - `artifacts/codex_oauth_image.png` — 1024x1024 PNG
 - `artifacts/codex_oauth_drawing.png` — 1024x1024 PNG
-- `artifacts/realtime_oauth_audio_response.pcm16` — Realtime audio output, PCM16
-- `artifacts/realtime_oauth_audio_transcript.txt` — transcript: `oauth realtime ok`
+- `artifacts/realtime_oauth_audio_response.pcm16` — previous Realtime audio
+  output artifact; the current matrix does not count Realtime WebSocket media as
+  verified OAuth-only.
+- `artifacts/realtime_oauth_audio_transcript.txt` — previous transcript
+  artifact; the current matrix does not count Realtime WebSocket media as
+  verified OAuth-only.
 - `artifacts/vision_probe_red_square.png` — local vision test input
 - `artifacts/tiny_silence.wav` — local STT probe input
 - `artifacts/codex_backend_upload_probe.txt` — local file used for the

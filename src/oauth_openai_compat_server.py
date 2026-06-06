@@ -1049,13 +1049,17 @@ class CompatHandler(BaseHTTPRequestHandler):
         output_path = ARTIFACTS / f"compat_proxy_audio_{uuid.uuid4().hex}.pcm16"
         result = self.router.audio_speech_create(text, output_path, voice=body.get("voice"))
         audio_bytes = Path(result["path"]).read_bytes()
+        headers = {
+            "X-OAuth-Compat-Route": str(result.get("route")),
+            "X-Local-Path": str(result.get("path")),
+            "X-OAuth-Compat-Fallback": "true" if result.get("fallback") else "false",
+        }
+        if result.get("realtime_error_type"):
+            headers["X-OAuth-Compat-Upstream-Error-Type"] = str(result.get("realtime_error_type"))
         self.write_bytes(
             audio_bytes,
             content_type="audio/L16; rate=24000; channels=1",
-            headers={
-                "X-OAuth-Compat-Route": str(result.get("route")),
-                "X-Local-Path": str(result.get("path")),
-            },
+            headers=headers,
         )
 
     def handle_audio_transcriptions(self) -> None:

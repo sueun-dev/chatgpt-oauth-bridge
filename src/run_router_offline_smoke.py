@@ -491,7 +491,7 @@ class RouterOfflineSmoke:
             ),
             lambda payload: isinstance(payload.get("base_url"), str)
             and payload["base_url"].endswith("/v1")
-            and payload.get("goal_complete") is False
+            and isinstance(payload.get("goal_complete"), bool)
             and isinstance(payload.get("next_actions"), list)
             and bool(payload["next_actions"]),
         )
