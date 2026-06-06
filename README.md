@@ -76,6 +76,29 @@ The repo is kept Python 3.9-compatible on this Mac. `bridge.py` also sets a
 local pycache directory for child checks so macOS sandboxed Python does not try
 to write compile artifacts under `~/Library/Caches`.
 
+## First Run: Generate The Surface Audit
+
+On a fresh clone, run the audit once before the surface-aware commands:
+
+```bash
+python bridge.py audit
+```
+
+This writes `reports/openai_surface_audit_latest.json`, which several commands
+read. That JSON report is gitignored (see `.gitignore`: `reports/*.json`), so a
+clean clone does not ship it and must build it locally first. Until you run
+`audit`, the commands that depend on this file fail with a
+`Missing surface audit report` / `FileNotFoundError`, and the proxy route
+`GET /v1/oauth-classify` returns `404` instead of a classification.
+
+Commands and routes that require the audit to have been run first:
+`quickstart`, `classify`, `coverage`, `policy`, `guide`, `check`, `migrate`,
+`boundaries`, and the proxy's `/v1/oauth-classify`, `/v1/oauth-coverage-map`,
+`/v1/oauth-route-policy`, `/v1/oauth-compatibility-guide`,
+`/v1/oauth-boundary-playbook`, and `/v1/oauth-quickstart` routes. `audit` runs
+automatically as the first step of `python bridge.py preflight`, so once a
+preflight has succeeded the file is present and these commands work.
+
 ## Connect OAuth In One Check
 
 Run the setup checker first:
@@ -95,6 +118,10 @@ python bridge.py quickstart
 python bridge.py publish-check
 python bridge.py live-check
 ```
+
+`quickstart` reads the surface audit, so on a fresh clone run
+`python bridge.py audit` first (see [First Run](#first-run-generate-the-surface-audit))
+or it fails with a missing-report error.
 
 Default `doctor` exits successfully when the local package health checks pass,
 but it still prints whether the full OpenAI API OAuth goal is incomplete.
@@ -229,6 +256,11 @@ Use `GET /v1/oauth-goal-audit` for the full-goal verdict that backs
 `python bridge.py verdict`: complete API support, safe workarounds, user
 readiness, and what must not be claimed.
 Use `GET /v1/oauth-classify?path=/v1/embeddings` for a single route decision.
+The surface-aware routes (`/v1/oauth-classify`, `/v1/oauth-coverage-map`,
+`/v1/oauth-route-policy`, `/v1/oauth-compatibility-guide`,
+`/v1/oauth-boundary-playbook`, `/v1/oauth-quickstart`) read the surface audit,
+so on a fresh clone run `python bridge.py audit` first; otherwise they return
+`404` until the report exists.
 Known official OpenAI paths that are not implemented by the local bridge return
 a structured `oauth_compat.boundary` JSON error instead of a generic `404`, so
 SDK/app logs can show whether the route needs Platform credentials, live
@@ -476,6 +508,10 @@ Official API surface audit:
 python bridge.py audit
 ```
 
+Run this once on a fresh clone before `classify`, `coverage`, `policy`, `guide`,
+`check`, `migrate`, `boundaries`, and `quickstart`. It writes the gitignored
+`reports/openai_surface_audit_latest.json` that those commands read.
+
 If the current shell cannot reach the OpenAI OpenAPI source, `audit` reuses the
 latest checked-in path list and writes a source warning into the report instead
 of silently pretending the spec was refreshed.
@@ -486,7 +522,8 @@ official docs parity evidence, not a live hosted-API smoke test; `/v1/videos`
 still documents `OPENAI_API_KEY` examples and `/v1/organization/projects`
 documents Admin API key auth.
 
-Classify one OpenAI API path:
+Classify one OpenAI API path (requires `python bridge.py audit` first on a
+fresh clone):
 
 ```bash
 python bridge.py classify /v1/embeddings
@@ -556,27 +593,31 @@ including `env`, `readiness`, `guide`, `config`, `coverage`, `policy`,
 `preflight`, `publish-check`, `live-check`, `doctor`, and the smoke commands. Use it when
 you want current evidence without updating tracked `reports/*.md` files.
 
-Machine-readable allow/deny/fallback route policy:
+Machine-readable allow/deny/fallback route policy (needs the audit report; run
+`python bridge.py audit` first on a fresh clone):
 
 ```bash
 python bridge.py policy
 ```
 
-User-facing compatibility guide:
+User-facing compatibility guide (needs the audit report; run
+`python bridge.py audit` first on a fresh clone):
 
 ```bash
 python bridge.py guide
 python bridge.py guide --category api_key_or_admin_key_required --limit 20
 ```
 
-Product-group coverage map:
+Product-group coverage map (needs the audit report; run
+`python bridge.py audit` first on a fresh clone):
 
 ```bash
 python bridge.py coverage
 python bridge.py coverage --group realtime
 ```
 
-Safe playbook for remaining Platform/Admin boundaries:
+Safe playbook for remaining Platform/Admin boundaries (needs the audit report;
+run `python bridge.py audit` first on a fresh clone):
 
 ```bash
 python bridge.py boundaries
@@ -635,14 +676,17 @@ It also writes `reports/openai_bridge_finish_gate.sh`; run it with `--push`
 when you want publish and live-launch gates in one end-to-end command.
 `quickstart` additionally writes `reports/quickstart_latest.md/json` and
 regenerates the route policy and full-goal audit so users can start from one
-bundle instead of combining several commands by hand.
+bundle instead of combining several commands by hand. It reads the surface audit
+report, so on a fresh clone run `python bridge.py audit` first or it fails with a
+missing-report error.
 The generated env example also lists optional Realtime model overrides such as
 `OAUTH_BRIDGE_REALTIME_MODEL=gpt-realtime-2` and
 `OAUTH_BRIDGE_REALTIME_TRANSCRIPTION_MODEL=gpt-realtime-whisper` for apps that
 want to follow the current Realtime guide while preserving the last local matrix
 default unless explicitly changed.
 
-Check a path list or scan your app source:
+Check a path list or scan your app source (needs the audit report; run
+`python bridge.py audit` first on a fresh clone):
 
 ```bash
 python bridge.py check /v1/embeddings /v1/assistants /v1/videos/edits
@@ -657,7 +701,8 @@ preflight verifies SDK method coverage against all `172` currently documented
 OpenAI API paths, so new official paths should break the gate until the scanner
 knows how to classify them.
 
-Generate a paste-ready app migration plan:
+Generate a paste-ready app migration plan (needs the audit report; run
+`python bridge.py audit` first on a fresh clone):
 
 ```bash
 python bridge.py migrate path/to/your/app
